@@ -45,6 +45,7 @@ const PromptBuilder: React.FC = () => {
           xml += hasContent ? childrenXml : `\n${childrenXml}\n${indent}`;
         }
         
+        // Ensure closing tag is on its own line
         xml += `</${element.tagName}>`;
         return xml;
       }).join('\n');
@@ -165,15 +166,19 @@ const PromptBuilder: React.FC = () => {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <Card className="p-4 shadow-md">
-        <h2 className="text-xl font-semibold mb-4 flex justify-between items-center">
+      <Card className="p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.5)] border-2 border-black dark:border-gray-100 rounded-none bg-[#F2FCE2] dark:bg-gray-800">
+        <h2 className="text-xl font-bold mb-4 flex justify-between items-center border-b-2 border-black dark:border-gray-100 pb-2">
           <span>Structure Builder</span>
-          <Button onClick={addNewElement} size="sm" variant="outline" className="flex items-center gap-1">
+          <Button 
+            onClick={addNewElement} 
+            size="sm" 
+            className="flex items-center gap-1 bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
+          >
             <Plus className="h-4 w-4" /> Add Element
           </Button>
         </h2>
         
-        <div className="mb-6 bg-gray-50 dark:bg-gray-800 rounded-lg p-4 min-h-[200px] max-h-[60vh] overflow-y-auto">
+        <div className="mb-6 bg-white dark:bg-gray-800 rounded-none border-2 border-black dark:border-gray-100 p-4 min-h-[200px] max-h-[60vh] overflow-y-auto">
           {elements.length === 0 ? (
             <div className="text-center text-gray-500 py-8">
               <p>No elements yet. Add an element to begin building your prompt.</p>
@@ -191,11 +196,11 @@ const PromptBuilder: React.FC = () => {
         </div>
 
         <Tabs defaultValue="editor" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="editor">Element Editor</TabsTrigger>
-            <TabsTrigger value="help">Quick Help</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 border-2 border-black dark:border-gray-100 rounded-none bg-[#FEF7CD] dark:bg-gray-700">
+            <TabsTrigger value="editor" className="data-[state=active]:bg-[#9AE66E] data-[state=active]:text-black rounded-none">Element Editor</TabsTrigger>
+            <TabsTrigger value="help" className="data-[state=active]:bg-[#9AE66E] data-[state=active]:text-black rounded-none">Quick Help</TabsTrigger>
           </TabsList>
-          <TabsContent value="editor" className="mt-4">
+          <TabsContent value="editor" className="mt-4 border-2 border-black dark:border-gray-100 p-4 bg-white dark:bg-gray-800 rounded-none">
             {selectedElement ? (
               <ElementEditor 
                 element={selectedElement} 
@@ -207,7 +212,7 @@ const PromptBuilder: React.FC = () => {
               </div>
             )}
           </TabsContent>
-          <TabsContent value="help" className="mt-4">
+          <TabsContent value="help" className="mt-4 border-2 border-black dark:border-gray-100 p-4 bg-white dark:bg-gray-800 rounded-none">
             <div className="space-y-2 text-sm">
               <p><strong>How to use:</strong></p>
               <ul className="list-disc pl-5 space-y-1">
@@ -223,14 +228,18 @@ const PromptBuilder: React.FC = () => {
         </Tabs>
       </Card>
       
-      <Card className="p-4 shadow-md">
-        <h2 className="text-xl font-semibold mb-4 flex justify-between items-center">
+      <Card className="p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.5)] border-2 border-black dark:border-gray-100 rounded-none bg-[#F2FCE2] dark:bg-gray-800">
+        <h2 className="text-xl font-bold mb-4 flex justify-between items-center border-b-2 border-black dark:border-gray-100 pb-2">
           <span>XML Preview</span>
-          <Button onClick={copyToClipboard} size="sm" variant="outline" className="flex items-center gap-1">
+          <Button 
+            onClick={copyToClipboard} 
+            size="sm" 
+            className="flex items-center gap-1 bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
+          >
             <Copy className="h-4 w-4" /> Copy
           </Button>
         </h2>
-        <pre className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 overflow-x-auto whitespace-pre-wrap min-h-[400px] max-h-[70vh] overflow-y-auto font-mono text-sm">
+        <pre className="bg-white dark:bg-gray-800 border-2 border-black dark:border-gray-100 rounded-none p-4 overflow-x-auto whitespace-pre-wrap min-h-[400px] max-h-[70vh] overflow-y-auto font-mono text-sm">
           {outputXML || '<-- Your XML will appear here -->'}
         </pre>
       </Card>
