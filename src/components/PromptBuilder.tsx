@@ -29,22 +29,28 @@ const PromptBuilder: React.FC = () => {
         const hasChildren = element.children && element.children.length > 0;
         const hasContent = element.content.trim().length > 0;
         
-        if (!hasChildren && !hasContent) {
-          return `${indent}<${element.tagName} />`;
-        }
-        
+        // Start with opening tag
         let xml = `${indent}<${element.tagName}>`;
         
+        // Add content with proper indentation if exists
         if (hasContent) {
           xml += `\n${indent}  ${element.content}\n${indent}`;
         }
         
+        // Add children
         if (hasChildren) {
           const childrenXml = generateXML(element.children, indentLevel + 1);
-          xml += hasContent ? childrenXml : `\n${childrenXml}\n${indent}`;
+          if (hasContent) {
+            xml += childrenXml;
+          } else {
+            xml += `\n${childrenXml}\n${indent}`;
+          }
+        } else if (!hasContent) {
+          // If no content and no children, add a line break for empty elements
+          xml += "\n" + indent;
         }
         
-        // Ensure closing tag is on its own line
+        // Add closing tag
         xml += `</${element.tagName}>`;
         return xml;
       }).join('\n');
@@ -190,6 +196,100 @@ const PromptBuilder: React.FC = () => {
     setElements(newElements);
   };
 
+  // New function to move an element up
+  const moveElementUp = (elementId: string) => {
+    // Find the element and its parent
+    const findElementWithParent = (elements: XMLElement[], parentElements: XMLElement[] | null = null): 
+      { element: XMLElement, parentElements: XMLElement[], index: number } | null => {
+      for (let i = 0; i < elements.length; i++) {
+        if (elements[i].id === elementId) {
+          return { element: elements[i], parentElements: parentElements || elements, index: i };
+        }
+        
+        if (elements[i].children.length > 0) {
+          const found = findElementWithParent(elements[i].children, elements[i].children);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+    
+    const found = findElementWithParent(elements);
+    if (found && found.index > 0) {
+      const { parentElements, index } = found;
+      const newElements = [...parentElements];
+      
+      // Swap with the element above
+      [newElements[index - 1], newElements[index]] = [newElements[index], newElements[index - 1]];
+      
+      // Update the entire elements tree
+      setElements(updateElementsTree(elements, parentElements, newElements));
+    }
+  };
+
+  // New function to move an element down
+  const moveElementDown = (elementId: string) => {
+    // Find the element and its parent
+    const findElementWithParent = (elements: XMLElement[], parentElements: XMLElement[] | null = null): 
+      { element: XMLElement, parentElements: XMLElement[], index: number } | null => {
+      for (let i = 0; i < elements.length; i++) {
+        if (elements[i].id === elementId) {
+          return { element: elements[i], parentElements: parentElements || elements, index: i };
+        }
+        
+        if (elements[i].children.length > 0) {
+          const found = findElementWithParent(elements[i].children, elements[i].children);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+    
+    const found = findElementWithParent(elements);
+    if (found && found.index < found.parentElements.length - 1) {
+      const { parentElements, index } = found;
+      const newElements = [...parentElements];
+      
+      // Swap with the element below
+      [newElements[index], newElements[index + 1]] = [newElements[index + 1], newElements[index]];
+      
+      // Update the entire elements tree
+      setElements(updateElementsTree(elements, parentElements, newElements));
+    }
+  };
+
+  // Helper function to update the elements tree
+  const updateElementsTree = (
+    originalElements: XMLElement[], 
+    parentToReplace: XMLElement[], 
+    newParentElements: XMLElement[]
+  ): XMLElement[] => {
+    // If we're replacing the root elements
+    if (parentToReplace === elements) {
+      return newParentElements;
+    }
+    
+    // Otherwise, we need to find the parent and replace its children
+    const replaceElementsRecursive = (elements: XMLElement[]): XMLElement[] => {
+      return elements.map(el => {
+        if (el.children === parentToReplace) {
+          return {
+            ...el,
+            children: newParentElements
+          };
+        } else if (el.children.length > 0) {
+          return {
+            ...el,
+            children: replaceElementsRecursive(el.children)
+          };
+        }
+        return el;
+      });
+    };
+    
+    return replaceElementsRecursive(originalElements);
+  };
+
   const copyToClipboard = () => {
     navigator.clipboard.writeText(outputXML);
     toast.success("XML copied to clipboard!");
@@ -221,42 +321,25 @@ const PromptBuilder: React.FC = () => {
               onAddChild={addChildElement}
               onDelete={deleteElement}
               onToggleCollapse={toggleCollapseElement}
+              onMoveUp={moveElementUp}
+              onMoveDown={moveElementDown}
               selectedElementId={selectedElement?.id}
             />
           )}
         </div>
 
-        <Tabs defaultValue="editor" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 border-2 border-black dark:border-gray-100 rounded-none bg-[#FEF7CD] dark:bg-gray-700">
-            <TabsTrigger value="editor" className="data-[state=active]:bg-[#9AE66E] data-[state=active]:text-black rounded-none font-bold">Element Editor</TabsTrigger>
-            <TabsTrigger value="help" className="data-[state=active]:bg-[#9AE66E] data-[state=active]:text-black rounded-none font-bold">Quick Help</TabsTrigger>
-          </TabsList>
-          <TabsContent value="editor" className="mt-4 border-2 border-black dark:border-gray-100 p-4 bg-white dark:bg-gray-800 rounded-none shadow-none transform-none">
-            {selectedElement ? (
-              <ElementEditor 
-                element={selectedElement} 
-                onUpdate={updateElement} 
-              />
-            ) : (
-              <div className="text-center text-gray-500 py-8">
-                <p>Select an element to edit its properties.</p>
-              </div>
-            )}
-          </TabsContent>
-          <TabsContent value="help" className="mt-4 border-2 border-black dark:border-gray-100 p-4 bg-white dark:bg-gray-800 rounded-none shadow-none transform-none">
-            <div className="space-y-2 text-sm">
-              <p><strong>How to use:</strong></p>
-              <ul className="list-disc pl-5 space-y-1">
-                <li>Click "Add Element" to create a new XML tag</li>
-                <li>Select any element to edit its name and content</li>
-                <li>Add child elements to create nested structures</li>
-                <li>Toggle elements to collapse/expand them</li>
-                <li>Preview your XML on the right panel</li>
-                <li>Copy the final XML when you're done</li>
-              </ul>
+        <div className="border-2 border-black dark:border-gray-100 p-4 bg-white dark:bg-gray-800 rounded-none">
+          {selectedElement ? (
+            <ElementEditor 
+              element={selectedElement} 
+              onUpdate={updateElement} 
+            />
+          ) : (
+            <div className="text-center text-gray-500 py-8">
+              <p>Select an element to edit its properties.</p>
             </div>
-          </TabsContent>
-        </Tabs>
+          )}
+        </div>
       </Card>
       
       <Card className="p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.5)] border-2 border-black dark:border-gray-100 rounded-none bg-[#F2FCE2] dark:bg-gray-800">

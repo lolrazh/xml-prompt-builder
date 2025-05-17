@@ -2,7 +2,7 @@
 import React from 'react';
 import { XMLElement } from './PromptBuilder';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight, Plus, Trash } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, Trash, ArrowUp, ArrowDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ElementTreeProps {
@@ -11,6 +11,8 @@ interface ElementTreeProps {
   onAddChild: (elementId: string) => void;
   onDelete: (elementId: string) => void;
   onToggleCollapse: (elementId: string) => void;
+  onMoveUp: (elementId: string) => void;
+  onMoveDown: (elementId: string) => void;
   selectedElementId: string | undefined;
   depth?: number;
 }
@@ -21,12 +23,14 @@ const ElementTree: React.FC<ElementTreeProps> = ({
   onAddChild,
   onDelete,
   onToggleCollapse,
+  onMoveUp,
+  onMoveDown,
   selectedElementId,
   depth = 0,
 }) => {
   return (
     <div className={cn("space-y-2", depth > 0 && "ml-6 pl-2 border-l-2 border-black dark:border-gray-700")}>
-      {elements.map((element) => (
+      {elements.map((element, index) => (
         <div key={element.id} className="space-y-2">
           <div 
             className={cn(
@@ -71,6 +75,30 @@ const ElementTree: React.FC<ElementTreeProps> = ({
                 className="h-6 w-6"
                 onClick={(e) => {
                   e.stopPropagation();
+                  onMoveUp(element.id);
+                }}
+              >
+                <ArrowUp className="h-4 w-4 stroke-[3]" />
+              </Button>
+              
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMoveDown(element.id);
+                }}
+              >
+                <ArrowDown className="h-4 w-4 stroke-[3]" />
+              </Button>
+              
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={(e) => {
+                  e.stopPropagation();
                   onAddChild(element.id);
                 }}
               >
@@ -98,6 +126,8 @@ const ElementTree: React.FC<ElementTreeProps> = ({
               onAddChild={onAddChild}
               onDelete={onDelete}
               onToggleCollapse={onToggleCollapse}
+              onMoveUp={onMoveUp}
+              onMoveDown={onMoveDown}
               selectedElementId={selectedElementId}
               depth={depth + 1}
             />
