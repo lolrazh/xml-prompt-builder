@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -55,6 +54,34 @@ const PromptBuilder: React.FC = () => {
     setOutputXML(xml);
   }, [elements]);
 
+  // Update selectedElement reference when elements change to prevent stale state
+  useEffect(() => {
+    if (selectedElement) {
+      const findUpdatedElement = (elementsArray: XMLElement[], id: string): XMLElement | null => {
+        for (const element of elementsArray) {
+          if (element.id === id) {
+            return element;
+          }
+          
+          if (element.children.length > 0) {
+            const foundChild = findUpdatedElement(element.children, id);
+            if (foundChild) return foundChild;
+          }
+        }
+        return null;
+      };
+      
+      const updatedElement = findUpdatedElement(elements, selectedElement.id);
+      if (updatedElement && (
+          updatedElement.tagName !== selectedElement.tagName || 
+          updatedElement.content !== selectedElement.content ||
+          JSON.stringify(updatedElement.children) !== JSON.stringify(selectedElement.children)
+        )) {
+        setSelectedElement(updatedElement);
+      }
+    }
+  }, [elements, selectedElement]);
+
   const addNewElement = () => {
     const newElement: XMLElement = {
       id: `element-${Date.now()}`,
@@ -70,7 +97,11 @@ const PromptBuilder: React.FC = () => {
     const updateElementRecursive = (elements: XMLElement[]): XMLElement[] => {
       return elements.map(el => {
         if (el.id === updatedElement.id) {
-          return updatedElement;
+          // Preserve children when updating an element
+          return {
+            ...updatedElement,
+            children: el.children
+          };
         } else if (el.children.length > 0) {
           return {
             ...el,
@@ -168,17 +199,17 @@ const PromptBuilder: React.FC = () => {
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card className="p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.5)] border-2 border-black dark:border-gray-100 rounded-none bg-[#F2FCE2] dark:bg-gray-800">
         <h2 className="text-xl font-bold mb-4 flex justify-between items-center border-b-2 border-black dark:border-gray-100 pb-2">
-          <span>Structure Builder</span>
+          <span className="font-black">Structure Builder</span>
           <Button 
             onClick={addNewElement} 
             size="sm" 
             className="flex items-center gap-1 bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
           >
-            <Plus className="h-4 w-4" /> Add Element
+            <Plus className="h-4 w-4 stroke-[3]" /> Add Element
           </Button>
         </h2>
         
-        <div className="mb-6 bg-white dark:bg-gray-800 rounded-none border-2 border-black dark:border-gray-100 p-4 min-h-[200px] max-h-[60vh] overflow-y-auto">
+        <div className="mb-6 bg-white dark:bg-gray-800 rounded-none border-2 border-black dark:border-gray-100 p-4 min-h-[200px] max-h-[60vh] overflow-y-auto font-mono">
           {elements.length === 0 ? (
             <div className="text-center text-gray-500 py-8">
               <p>No elements yet. Add an element to begin building your prompt.</p>
@@ -197,10 +228,10 @@ const PromptBuilder: React.FC = () => {
 
         <Tabs defaultValue="editor" className="w-full">
           <TabsList className="grid w-full grid-cols-2 border-2 border-black dark:border-gray-100 rounded-none bg-[#FEF7CD] dark:bg-gray-700">
-            <TabsTrigger value="editor" className="data-[state=active]:bg-[#9AE66E] data-[state=active]:text-black rounded-none">Element Editor</TabsTrigger>
-            <TabsTrigger value="help" className="data-[state=active]:bg-[#9AE66E] data-[state=active]:text-black rounded-none">Quick Help</TabsTrigger>
+            <TabsTrigger value="editor" className="data-[state=active]:bg-[#9AE66E] data-[state=active]:text-black rounded-none font-bold">Element Editor</TabsTrigger>
+            <TabsTrigger value="help" className="data-[state=active]:bg-[#9AE66E] data-[state=active]:text-black rounded-none font-bold">Quick Help</TabsTrigger>
           </TabsList>
-          <TabsContent value="editor" className="mt-4 border-2 border-black dark:border-gray-100 p-4 bg-white dark:bg-gray-800 rounded-none">
+          <TabsContent value="editor" className="mt-4 border-2 border-black dark:border-gray-100 p-4 bg-white dark:bg-gray-800 rounded-none shadow-none transform-none">
             {selectedElement ? (
               <ElementEditor 
                 element={selectedElement} 
@@ -212,7 +243,7 @@ const PromptBuilder: React.FC = () => {
               </div>
             )}
           </TabsContent>
-          <TabsContent value="help" className="mt-4 border-2 border-black dark:border-gray-100 p-4 bg-white dark:bg-gray-800 rounded-none">
+          <TabsContent value="help" className="mt-4 border-2 border-black dark:border-gray-100 p-4 bg-white dark:bg-gray-800 rounded-none shadow-none transform-none">
             <div className="space-y-2 text-sm">
               <p><strong>How to use:</strong></p>
               <ul className="list-disc pl-5 space-y-1">
@@ -230,13 +261,13 @@ const PromptBuilder: React.FC = () => {
       
       <Card className="p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.5)] border-2 border-black dark:border-gray-100 rounded-none bg-[#F2FCE2] dark:bg-gray-800">
         <h2 className="text-xl font-bold mb-4 flex justify-between items-center border-b-2 border-black dark:border-gray-100 pb-2">
-          <span>XML Preview</span>
+          <span className="font-black">XML Preview</span>
           <Button 
             onClick={copyToClipboard} 
             size="sm" 
             className="flex items-center gap-1 bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
           >
-            <Copy className="h-4 w-4" /> Copy
+            <Copy className="h-4 w-4 stroke-[3]" /> Copy
           </Button>
         </h2>
         <pre className="bg-white dark:bg-gray-800 border-2 border-black dark:border-gray-100 rounded-none p-4 overflow-x-auto whitespace-pre-wrap min-h-[400px] max-h-[70vh] overflow-y-auto font-mono text-sm">

@@ -37,26 +37,26 @@ const ElementEditor: React.FC<ElementEditorProps> = ({ element, onUpdate }) => {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 font-mono">
       <div>
-        <Label htmlFor="tagName" className="font-bold text-black dark:text-white">Tag Name</Label>
+        <Label htmlFor="tagName" className="font-black text-black dark:text-white">Tag Name</Label>
         <Input
           id="tagName"
           value={tagName}
           onChange={handleTagNameChange}
           placeholder="Enter tag name"
-          className="mt-1 border-2 border-black dark:border-gray-400 rounded-none focus:ring-[#9AE66E] focus:border-[#9AE66E]"
+          className="mt-1 border-2 border-black dark:border-gray-400 rounded-none focus:ring-[#9AE66E] focus:border-[#9AE66E] font-mono"
         />
       </div>
       
       <div>
-        <Label htmlFor="content" className="font-bold text-black dark:text-white">Content</Label>
+        <Label htmlFor="content" className="font-black text-black dark:text-white">Content</Label>
         <Textarea
           id="content"
           value={content}
           onChange={handleContentChange}
           placeholder="Enter content (optional)"
-          className="mt-1 min-h-[100px] border-2 border-black dark:border-gray-400 rounded-none focus:ring-[#9AE66E] focus:border-[#9AE66E]"
+          className="mt-1 min-h-[100px] border-2 border-black dark:border-gray-400 rounded-none focus:ring-[#9AE66E] focus:border-[#9AE66E] font-mono"
         />
       </div>
     </div>
