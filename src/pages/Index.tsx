@@ -2,7 +2,8 @@
 import React from 'react';
 import PromptBuilder from '../components/PromptBuilder';
 import HelpDialog from '../components/HelpDialog';
-import { Code, PlusCircle, Sparkles } from 'lucide-react';
+import { Code, Github, PlusCircle, Sparkles } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const Index = () => {
   return (
@@ -13,7 +14,17 @@ const Index = () => {
             <Code className="h-7 w-7 stroke-[3]" />
             <span>XML Prompt Builder</span>
           </h1>
-          <HelpDialog />
+          <div className="flex items-center gap-2">
+            <a 
+              href="https://github.com/lolrazh"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="h-9 w-9 flex items-center justify-center rounded-none hover:bg-[#9AE66E]/30"
+            >
+              <Github className="h-5 w-5 stroke-[3]" />
+            </a>
+            <HelpDialog />
+          </div>
         </div>
       </header>
 
@@ -61,7 +72,17 @@ const Index = () => {
       
       <footer className="border-t-2 border-black dark:border-gray-700 mt-16 py-6 bg-[#F2FCE2] dark:bg-gray-900">
         <div className="container mx-auto px-4 text-center text-sm text-gray-600 dark:text-gray-400">
-          <p>Created with ♥ for prompt engineers and AI enthusiasts</p>
+          <p>Created with ♥ for prompt engineers and AI enthusiasts
+            {" - "}
+            <a 
+              href="https://github.com/lolrazh" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="font-medium hover:underline"
+            >
+              by @lolrazh
+            </a>
+          </p>
         </div>
       </footer>
     </div>

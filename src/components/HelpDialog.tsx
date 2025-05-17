@@ -16,7 +16,7 @@ const HelpDialog: React.FC = () => {
           <HelpCircle className="h-5 w-5 stroke-[3]" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="border-2 border-black rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-[#FEF7CD]">
+      <DialogContent className="border-2 border-black rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-[#F2FCE2]">
         <DialogHeader>
           <DialogTitle className="text-xl font-black">How to Use XML Prompt Builder</DialogTitle>
         </DialogHeader>
