@@ -2,7 +2,7 @@
 # XML Prompt Builder
 
 <div align="center">
-  <img src="public/page.png" alt="XML Prompt Builder Logo" width="200"/>
+  <img src="public/page.png" alt="XML Prompt Builder Logo" width="1000"/>
 </div>
 
 ## 🚀 Overview
