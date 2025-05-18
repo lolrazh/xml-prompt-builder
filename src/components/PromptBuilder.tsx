@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -34,20 +35,28 @@ const PromptBuilder: React.FC = () => {
         
         // Add content with proper indentation if exists
         if (hasContent) {
-          xml += `\n${indent}  ${element.content}\n${indent}`;
+          // Ensure content starts on a new line with proper indentation
+          xml += `\n${indent}  ${element.content}`;
+          // End content on a new line before closing tag
+          xml += `\n${indent}`;
+        } else if (hasChildren) {
+          // If no content but has children, add a line break
+          xml += '\n';
         }
         
         // Add children
         if (hasChildren) {
           const childrenXml = generateXML(element.children, indentLevel + 1);
-          if (hasContent) {
+          if (!hasContent) {
             xml += childrenXml;
           } else {
-            xml += `\n${childrenXml}\n${indent}`;
+            xml += childrenXml;
           }
+          // After children, ensure closing tag is on new line
+          xml += `\n${indent}`;
         } else if (!hasContent) {
-          // If no content and no children, add a line break for empty elements
-          xml += "\n" + indent;
+          // If no content and no children, still ensure closing tag on new line
+          xml += `\n${indent}`;
         }
         
         // Add closing tag
@@ -78,6 +87,14 @@ const PromptBuilder: React.FC = () => {
       };
       
       const updatedElement = findUpdatedElement(elements, selectedElement.id);
+      
+      // If element not found (was deleted), reset selection
+      if (!updatedElement) {
+        setSelectedElement(null);
+        return;
+      }
+      
+      // Update if properties changed
       if (updatedElement && (
           updatedElement.tagName !== selectedElement.tagName || 
           updatedElement.content !== selectedElement.content ||
@@ -126,8 +143,24 @@ const PromptBuilder: React.FC = () => {
     const deleteElementRecursive = (elements: XMLElement[]): XMLElement[] => {
       return elements.filter(el => {
         if (el.id === elementId) {
-          if (selectedElement?.id === elementId) {
-            setSelectedElement(null);
+          // Before deleting, check if the selectedElement is this element or any of its children
+          if (selectedElement) {
+            if (selectedElement.id === elementId) {
+              setSelectedElement(null);
+            } else {
+              // Check if selectedElement is a child of this element
+              const isSelectedInChildren = (parent: XMLElement): boolean => {
+                for (const child of parent.children) {
+                  if (child.id === selectedElement.id) return true;
+                  if (isSelectedInChildren(child)) return true;
+                }
+                return false;
+              };
+              
+              if (isSelectedInChildren(el)) {
+                setSelectedElement(null);
+              }
+            }
           }
           return false;
         }
@@ -196,7 +229,7 @@ const PromptBuilder: React.FC = () => {
     setElements(newElements);
   };
 
-  // New function to move an element up
+  // Function to move an element up
   const moveElementUp = (elementId: string) => {
     // Find the element and its parent
     const findElementWithParent = (elements: XMLElement[], parentElements: XMLElement[] | null = null): 
@@ -227,7 +260,7 @@ const PromptBuilder: React.FC = () => {
     }
   };
 
-  // New function to move an element down
+  // Function to move an element down
   const moveElementDown = (elementId: string) => {
     // Find the element and its parent
     const findElementWithParent = (elements: XMLElement[], parentElements: XMLElement[] | null = null): 

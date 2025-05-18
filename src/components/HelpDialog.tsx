@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { HelpCircle } from "lucide-react";
+import { HelpCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const HelpDialog: React.FC = () => {
@@ -13,13 +13,22 @@ const HelpDialog: React.FC = () => {
           size="icon" 
           className="h-9 w-9 rounded-none hover:bg-[#9AE66E]/30"
         >
-          <HelpCircle className="h-5 w-5 stroke-[3]" />
+          <HelpCircle className="h-6 w-6 stroke-[3]" />
         </Button>
       </DialogTrigger>
       <DialogContent className="border-2 border-black rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-[#F2FCE2]">
         <DialogHeader>
           <DialogTitle className="text-xl font-black">How to Use XML Prompt Builder</DialogTitle>
         </DialogHeader>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="absolute right-4 top-4 rounded-none h-8 w-8 p-0 hover:bg-black/10"
+          aria-label="Close"
+        >
+          <X className="h-5 w-5 stroke-[3]" />
+          <span className="sr-only">Close</span>
+        </Button>
         <div className="space-y-4 text-sm mt-2">
           <div>
             <p className="font-bold mb-1">Getting Started:</p>
