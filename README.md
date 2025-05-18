@@ -1,73 +1,87 @@
-# Welcome to your Lovable project
 
-## Project info
+# XML Prompt Builder
 
-**URL**: https://lovable.dev/projects/f3b73f7b-7c49-451e-b543-ebefb7f94241
+<div align="center">
+  <img src="https://raw.githubusercontent.com/lolrazh/xml-prompt-builder/main/public/logo.png" alt="XML Prompt Builder Logo" width="200"/>
+</div>
 
-## How can I edit this code?
+## 🚀 Overview
 
-There are several ways of editing your application.
+XML Prompt Builder is a visual tool for creating structured XML prompts for AI systems. This project helps prompt engineers and AI enthusiasts to create, edit, and format complex XML structures without dealing with manual syntax and formatting issues.
 
-**Use Lovable**
+## ✨ Features
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/f3b73f7b-7c49-451e-b543-ebefb7f94241) and start prompting.
+- **Visual XML Building**: Create structured XML elements through an intuitive interface
+- **Nested Structures**: Easily create parent-child relationships with proper nesting
+- **Real-time Preview**: See your XML structure update in real-time as you build
+- **Drag & Drop Reordering**: Rearrange elements with simple up/down controls
+- **Collapsible Elements**: Toggle visibility of complex nested structures
+- **Copy to Clipboard**: Export your finished XML with one click
 
-Changes made via Lovable will be committed automatically to this repo.
+## 🛠️ How to Use
 
-**Use your preferred IDE**
+### Getting Started
+1. Click "Add Element" to create a new XML tag
+2. Select any element to edit its name and content
+3. Add child elements to create nested structures
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Managing Elements
+- Toggle elements to collapse/expand them
+- Use the up/down arrows to rearrange elements
+- Child elements will stay within their parent when rearranged
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Preview & Export
+- Preview your XML on the right panel
+- Copy the final XML with the copy button when you're done
 
-Follow these steps:
+## 🔧 Technical Implementation
+
+XML Prompt Builder is built using:
+
+- React + TypeScript for a robust component architecture
+- Vite for lightning-fast development experience
+- Tailwind CSS for responsive and customizable styling
+- shadcn/ui for beautiful UI components
+- Lucide React for crisp, scalable icons
+
+## 🏁 Running Locally
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# Clone the repository
+git clone https://github.com/lolrazh/xml-prompt-builder.git
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Navigate to project directory
+cd xml-prompt-builder
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Install dependencies
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## 🧩 Use Cases
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- Creating structured prompts for large language models
+- Designing XML-based templates for API requests
+- Generating configuration files with proper formatting
+- Teaching XML structure and syntax to beginners
 
-**Use GitHub Codespaces**
+## 🤝 Contributing
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Contributions are welcome! Feel free to submit pull requests or open issues for new features, bug fixes, or improvements.
 
-## What technologies are used for this project?
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-This project is built with:
+## 📝 License
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-## How can I deploy this project?
+## 🙏 Acknowledgments
 
-Simply open [Lovable](https://lovable.dev/projects/f3b73f7b-7c49-451e-b543-ebefb7f94241) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+- Built with ♥ for prompt engineers and AI enthusiasts
+- Find me on GitHub [@lolrazh](https://github.com/lolrazh)
