@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -34,7 +35,9 @@ const PromptBuilder: React.FC = () => {
         
         // Add content with proper indentation if exists
         if (hasContent) {
-          xml += `\n${indent}  ${element.content}\n${indent}`;
+          xml += `\n${indent}  ${element.content}`;
+          // Always add a line break before closing tag when content exists
+          xml += `\n${indent}`;
         }
         
         // Add children
