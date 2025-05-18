@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { HelpCircle, X } from "lucide-react";
+import { HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const HelpDialog: React.FC = () => {
@@ -13,7 +13,7 @@ const HelpDialog: React.FC = () => {
           size="icon" 
           className="h-9 w-9 rounded-none hover:bg-[#9AE66E]/30"
         >
-          <HelpCircle className="h-7 w-7 stroke-[3]" />
+          <HelpCircle className="h-6 w-6 stroke-[3]" />
         </Button>
       </DialogTrigger>
       <DialogContent className="border-2 border-black rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-[#F2FCE2]">
@@ -47,18 +47,6 @@ const HelpDialog: React.FC = () => {
             </ul>
           </div>
         </div>
-        
-        {/* Custom close button to replace the default one */}
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="absolute right-4 top-4 rounded-none h-6 w-6 p-0 hover:bg-black/10"
-          onClick={() => document.querySelector('[data-radix-dialog-close]')?.dispatchEvent(
-            new MouseEvent('click', { bubbles: true })
-          )}
-        >
-          <X className="h-4 w-4 font-bold stroke-[3]" />
-        </Button>
       </DialogContent>
     </Dialog>
   );
