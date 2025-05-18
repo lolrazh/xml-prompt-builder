@@ -1,5 +1,5 @@
-    name = "xml-prompt" # Replace with your desired worker/project name
-    compatibility_date = "2025-05-18" # You can update this to a more recent date
+name = "xml-prompt" # Replace with your desired worker/project name
+compatibility_date = "2025-05-18" # You can update this to a more recent date
 
-    [pages_build_output]
-    dir = "./dist"
+[assets]
+directory = "./dist"
