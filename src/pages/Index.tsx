@@ -16,7 +16,7 @@ const Index = () => {
           </h1>
           <div className="flex items-center gap-2">
             <a 
-              href="https://github.com/lolrazh"
+              href="https://github.com/lolrazh/xml-prompt-builder"
               target="_blank"
               rel="noopener noreferrer"
               className="h-9 w-9 flex items-center justify-center rounded-none hover:bg-[#9AE66E]/30"

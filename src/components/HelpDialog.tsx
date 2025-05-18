@@ -13,7 +13,7 @@ const HelpDialog: React.FC = () => {
           size="icon" 
           className="h-9 w-9 rounded-none hover:bg-[#9AE66E]/30"
         >
-          <HelpCircle className="h-5 w-5 stroke-[3]" />
+          <HelpCircle className="h-6 w-6 stroke-[3]" />
         </Button>
       </DialogTrigger>
       <DialogContent className="border-2 border-black rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-[#F2FCE2]">

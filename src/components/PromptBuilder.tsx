@@ -46,7 +46,7 @@ const PromptBuilder: React.FC = () => {
             xml += `\n${childrenXml}\n${indent}`;
           }
         } else if (!hasContent) {
-          // If no content and no children, add a line break for empty elements
+          // Always ensure the closing tag is on a new line
           xml += "\n" + indent;
         }
         
@@ -78,11 +78,15 @@ const PromptBuilder: React.FC = () => {
       };
       
       const updatedElement = findUpdatedElement(elements, selectedElement.id);
-      if (updatedElement && (
+      
+      // If the element doesn't exist anymore (e.g., it was deleted), reset selection
+      if (!updatedElement) {
+        setSelectedElement(null);
+      } else if (
           updatedElement.tagName !== selectedElement.tagName || 
           updatedElement.content !== selectedElement.content ||
           JSON.stringify(updatedElement.children) !== JSON.stringify(selectedElement.children)
-        )) {
+        ) {
         setSelectedElement(updatedElement);
       }
     }
@@ -123,12 +127,32 @@ const PromptBuilder: React.FC = () => {
   };
 
   const deleteElement = (elementId: string) => {
+    // Check if the selected element is a child of the element being deleted
+    const isChildOfDeleted = (parent: XMLElement): boolean => {
+      if (!selectedElement) return false;
+      
+      // Direct child check
+      if (parent.id === elementId && parent.children.some(child => child.id === selectedElement.id)) {
+        return true;
+      }
+      
+      // Recursive check for deeper children
+      for (const child of parent.children) {
+        if (isChildOfDeleted(child)) {
+          return true;
+        }
+      }
+      
+      return false;
+    };
+    
+    // Check if the selected element itself or any of its parents are being deleted
+    const shouldResetSelection = !selectedElement ? false : 
+      selectedElement.id === elementId || elements.some(isChildOfDeleted);
+    
     const deleteElementRecursive = (elements: XMLElement[]): XMLElement[] => {
       return elements.filter(el => {
         if (el.id === elementId) {
-          if (selectedElement?.id === elementId) {
-            setSelectedElement(null);
-          }
           return false;
         }
         
@@ -142,6 +166,11 @@ const PromptBuilder: React.FC = () => {
     
     const newElements = deleteElementRecursive(elements);
     setElements(newElements);
+    
+    // Reset selection if the selected element is being deleted or is a child of deleted
+    if (shouldResetSelection) {
+      setSelectedElement(null);
+    }
   };
 
   const addChildElement = (parentId: string) => {
