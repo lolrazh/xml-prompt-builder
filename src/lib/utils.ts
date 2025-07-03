@@ -21,7 +21,7 @@ export function estimateTokenCount(text: string): number {
   const xmlTagCount = (normalizedText.match(/<[^>]+>/g) || []).length;
   
   // Count special characters that might be tokenized separately
-  const specialCharCount = (normalizedText.match(/[<>{}[\]().,;:!?""'']/g) || []).length;
+  const specialCharCount = (normalizedText.match(/[{}[\]().,;:!?"'`]/g) || []).length;
   
   // Base word count with a multiplier for subword tokenization
   const baseTokens = words.length * 1.3;
