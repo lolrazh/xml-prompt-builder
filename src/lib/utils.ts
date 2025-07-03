@@ -50,7 +50,7 @@ export function formatTokenCount(count: number): string {
   }
   
   if (count < 10000) {
-    return `${(count / 1000).toFixed(1)}k tokens`;
+    return `${(Math.floor(count / 100) / 10)}k tokens`;
   }
   
   if (count < 100000) {
