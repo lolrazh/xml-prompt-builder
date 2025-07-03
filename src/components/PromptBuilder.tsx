@@ -377,7 +377,7 @@ const PromptBuilder: React.FC = () => {
         <h2 className="text-xl font-bold mb-4 flex justify-between items-center border-b-2 border-black dark:border-gray-100 pb-2">
           <span className="font-black">XML Preview</span>
           <div className="flex items-center gap-3">
-            <span className="text-sm font-mono font-medium text-gray-600 dark:text-gray-400">
+            <span className="text-sm font-mono font-bold text-gray-600 dark:text-gray-400 pr-1">
               ~{formatTokenCount(tokenCount)}
             </span>
             <Button 
