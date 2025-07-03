@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Trash, Plus, Copy, MoveVertical } from 'lucide-react';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
+import { cn, estimateTokenCount, formatTokenCount } from '@/lib/utils';
 import ElementEditor from './ElementEditor';
 import ElementTree from './ElementTree';
 
@@ -20,6 +20,7 @@ const PromptBuilder: React.FC = () => {
   const [elements, setElements] = useState<XMLElement[]>([]);
   const [outputXML, setOutputXML] = useState<string>('');
   const [selectedElement, setSelectedElement] = useState<XMLElement | null>(null);
+  const [tokenCount, setTokenCount] = useState<number>(0);
 
   // Generate XML output whenever elements change
   useEffect(() => {
@@ -58,6 +59,7 @@ const PromptBuilder: React.FC = () => {
 
     const xml = generateXML(elements);
     setOutputXML(xml);
+    setTokenCount(estimateTokenCount(xml));
   }, [elements]);
 
   // Update selectedElement reference when elements change to prevent stale state
@@ -374,13 +376,18 @@ const PromptBuilder: React.FC = () => {
       <Card className="p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.5)] border-2 border-black dark:border-gray-100 rounded-none bg-[#F2FCE2] dark:bg-gray-800">
         <h2 className="text-xl font-bold mb-4 flex justify-between items-center border-b-2 border-black dark:border-gray-100 pb-2">
           <span className="font-black">XML Preview</span>
-          <Button 
-            onClick={copyToClipboard} 
-            size="sm" 
-            className="flex items-center gap-1 bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
-          >
-            <Copy className="h-4 w-4 stroke-[3]" /> Copy
-          </Button>
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-700 px-2 py-1 rounded border border-gray-300 dark:border-gray-600">
+              ~{formatTokenCount(tokenCount)}
+            </span>
+            <Button 
+              onClick={copyToClipboard} 
+              size="sm" 
+              className="flex items-center gap-1 bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
+            >
+              <Copy className="h-4 w-4 stroke-[3]" /> Copy
+            </Button>
+          </div>
         </h2>
         <pre className="bg-white dark:bg-gray-800 border-2 border-black dark:border-gray-100 rounded-none p-4 overflow-x-auto whitespace-pre-wrap min-h-[400px] max-h-[70vh] overflow-y-auto font-mono text-sm">
           {outputXML || '<-- Your XML will appear here -->'}
