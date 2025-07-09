@@ -365,18 +365,34 @@ const PromptBuilder: React.FC = () => {
     toast.success("XML copied to clipboard!");
   };
 
+  const clearAll = () => {
+    setElements([]);
+    setSelectedElement(null);
+    setRawInput('');
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card className="p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.5)] border-2 border-black dark:border-gray-100 rounded-none bg-[#F2FCE2] dark:bg-gray-800">
         <h2 className="text-xl font-bold mb-4 flex justify-between items-center border-b-2 border-black dark:border-gray-100 pb-2">
           <span className="font-black">Structure Builder</span>
-          <Button 
-            onClick={addNewElement} 
-            size="sm" 
-            className="flex items-center gap-1 bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
-          >
-            <Plus className="h-4 w-4 stroke-[3]" /> Add Element
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={clearAll}
+              size="sm"
+              disabled={!elements.length}
+              className="flex items-center gap-1 bg-white dark:bg-gray-900 hover:bg-red-100 text-red-700 dark:text-red-400 font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
+            >
+              <Trash className="h-4 w-4 stroke-[3]" /> clear
+            </Button>
+            <Button 
+              onClick={addNewElement} 
+              size="sm" 
+              className="flex items-center gap-1 bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
+            >
+              <Plus className="h-4 w-4 stroke-[3]" /> add element
+            </Button>
+          </div>
         </h2>
         
         <div className="mb-6 bg-white dark:bg-gray-800 rounded-none border-2 border-black dark:border-gray-100 p-4 min-h-[200px] max-h-[60vh] overflow-y-auto font-mono">

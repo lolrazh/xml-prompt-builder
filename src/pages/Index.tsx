@@ -2,7 +2,7 @@
 import React from 'react';
 import PromptBuilder from '../components/PromptBuilder';
 import HelpDialog from '../components/HelpDialog';
-import { Code, Github, PlusCircle, Sparkles } from 'lucide-react';
+import { Code, Github, PlusCircle, Sparkles, ClipboardPaste } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const Index = () => {
@@ -39,7 +39,7 @@ const Index = () => {
             Perfect for prompt engineers and AI enthusiasts.
           </p>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 max-w-5xl mx-auto">
             <div className="p-4 border-2 border-black rounded-none bg-white dark:bg-gray-800 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col items-center">
               <PlusCircle className="h-10 w-10 mb-3 stroke-[2.5] text-[#76B947]" />
               <h3 className="text-xl font-bold mb-2">Create Elements</h3>
@@ -53,6 +53,14 @@ const Index = () => {
               <h3 className="text-xl font-bold mb-2">Format Automatically</h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 Let the tool handle indentation, nesting, and proper XML formatting
+              </p>
+            </div>
+
+            <div className="p-4 border-2 border-black rounded-none bg-white dark:bg-gray-800 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col items-center">
+              <ClipboardPaste className="h-10 w-10 mb-3 stroke-[2.5] text-[#76B947]" />
+              <h3 className="text-xl font-bold mb-2">Import XML</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Paste an existing XML prompt and edit it visually in seconds
               </p>
             </div>
             
