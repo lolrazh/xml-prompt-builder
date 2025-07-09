@@ -400,7 +400,7 @@ const PromptBuilder: React.FC = () => {
           elements.length === 0 && "flex items-center justify-center"
         )}>
           {elements.length === 0 ? (
-            <div className="text-center text-gray-500">
+            <div className="text-center text-gray-400 text-sm">
               <p>No elements yet. Add an element to begin building your prompt.</p>
             </div>
           ) : (
@@ -427,8 +427,8 @@ const PromptBuilder: React.FC = () => {
               onUpdate={updateElement} 
             />
           ) : (
-            <div className="text-center text-gray-500">
-              <p className="font-mono">Select an element to edit its properties.</p>
+            <div className="text-center text-gray-400">
+              <p className="font-mono text-sm">Select an element to edit its properties.</p>
             </div>
           )}
         </div>
@@ -454,7 +454,7 @@ const PromptBuilder: React.FC = () => {
           id="xml-preview"
           contentEditable={elements.length === 0}
           suppressContentEditableWarning
-          data-placeholder="Paste XML here…"
+          data-placeholder="Paste XML here."
           className={cn(
             "relative w-full min-h-[400px] max-h-[70vh] overflow-y-auto whitespace-pre-wrap font-mono text-sm bg-white dark:bg-gray-800 border-2 border-black dark:border-gray-100 rounded-none p-4",
             elements.length === 0 ? "cursor-text" : "select-text",
