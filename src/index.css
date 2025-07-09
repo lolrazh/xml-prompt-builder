@@ -6,6 +6,11 @@
   content: attr(data-placeholder);
   color: theme('colors.gray.400');
   pointer-events: none;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: theme('fontFamily.mono');
 }
 
 @layer base {

@@ -395,9 +395,12 @@ const PromptBuilder: React.FC = () => {
           </div>
         </h2>
         
-        <div className="mb-6 bg-white dark:bg-gray-800 rounded-none border-2 border-black dark:border-gray-100 p-4 min-h-[200px] max-h-[60vh] overflow-y-auto font-mono">
+        <div className={cn(
+          "mb-6 bg-white dark:bg-gray-800 rounded-none border-2 border-black dark:border-gray-100 p-4 min-h-[200px] max-h-[60vh] overflow-y-auto font-mono",
+          elements.length === 0 && "flex items-center justify-center"
+        )}>
           {elements.length === 0 ? (
-            <div className="text-center text-gray-500 py-8">
+            <div className="text-center text-gray-500">
               <p>No elements yet. Add an element to begin building your prompt.</p>
             </div>
           ) : (
@@ -414,15 +417,18 @@ const PromptBuilder: React.FC = () => {
           )}
         </div>
 
-        <div className="border-2 border-black dark:border-gray-100 p-4 bg-white dark:bg-gray-800 rounded-none">
+        <div className={cn(
+          "border-2 border-black dark:border-gray-100 p-4 bg-white dark:bg-gray-800 rounded-none min-h-[160px]",
+          !selectedElement && "flex items-center justify-center"
+        )}>
           {selectedElement ? (
             <ElementEditor 
               element={selectedElement} 
               onUpdate={updateElement} 
             />
           ) : (
-            <div className="text-center text-gray-500 py-8">
-              <p>Select an element to edit its properties.</p>
+            <div className="text-center text-gray-500">
+              <p className="font-mono">Select an element to edit its properties.</p>
             </div>
           )}
         </div>
@@ -451,7 +457,8 @@ const PromptBuilder: React.FC = () => {
           data-placeholder="Paste XML here…"
           className={cn(
             "relative w-full min-h-[400px] max-h-[70vh] overflow-y-auto whitespace-pre-wrap font-mono text-sm bg-white dark:bg-gray-800 border-2 border-black dark:border-gray-100 rounded-none p-4",
-            elements.length === 0 ? "cursor-text" : "select-text"
+            elements.length === 0 ? "cursor-text" : "select-text",
+            !rawInput && "flex items-center justify-center"
           )}
           onInput={(e) => {
             if (elements.length) return;
