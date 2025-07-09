@@ -1,4 +1,5 @@
 import { XMLElement } from "@/components/PromptBuilder";
+import { generateUUID } from "./utils";
 
 export function xmlStringToElements(xmlString: string): XMLElement[] {
   const parser = new DOMParser();
@@ -15,14 +16,13 @@ export function xmlStringToElements(xmlString: string): XMLElement[] {
   const parseNode = (node: Element): XMLElement => {
     const children = Array.from(node.children).map(parseNode);
     
-    let content = "";
-    if (node.childNodes.length > 0 && !node.children.length) {
-        content = node.textContent?.trim() || "";
-    }
-
+    const content = Array.from(node.childNodes)
+      .filter(childNode => childNode.nodeType === Node.TEXT_NODE && childNode.textContent?.trim())
+      .map(childNode => childNode.textContent?.trim())
+      .join(" ");
 
     return {
-      id: `element-${crypto.randomUUID()}`,
+      id: `element-${generateUUID()}`,
       tagName: node.tagName,
       content: content,
       children: children,
