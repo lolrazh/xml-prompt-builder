@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { cn, estimateTokenCount, formatTokenCount } from '@/lib/utils';
 import ElementEditor from './ElementEditor';
 import ElementTree from './ElementTree';
-import { xmlStringToElements } from '@/lib/xml-parser';
+import { looseParseXML } from '@/lib/loose-xml';
 
 export interface XMLElement {
   id: string;
@@ -68,25 +68,19 @@ const PromptBuilder: React.FC = () => {
     const previewEl = document.getElementById('xml-preview');
 
     const handlePaste = (e: ClipboardEvent) => {
-      if (elements.length > 0) return;
-
+      if (elements.length) return;
       e.preventDefault();
-      const pastedText = e.clipboardData?.getData('text/plain');
 
-      if (pastedText) {
-        try {
-          const parsedElements = xmlStringToElements(pastedText);
-          setElements(parsedElements);
-          setRawInput(''); // Clear raw input on success
-          toast.success("XML pasted and parsed successfully!");
-        } catch (error) {
-          setRawInput(pastedText); // Keep the user's pasted text on error
-          if (error instanceof Error) {
-            toast.error(error.message);
-          } else {
-            toast.error("An unknown error occurred while parsing the XML.");
-          }
-        }
+      const text = e.clipboardData?.getData('text') ?? '';
+      try {
+        const parsed = looseParseXML(text);
+        setElements(parsed);
+        setSelectedElement(null);
+        setRawInput('');
+        toast.success('Imported!');
+      } catch (err: any) {
+        setRawInput(text);
+        toast.error(err.message || 'Parse error');
       }
     };
 
