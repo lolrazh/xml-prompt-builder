@@ -458,7 +458,7 @@ const PromptBuilder: React.FC = () => {
           className={cn(
             "relative w-full min-h-[400px] max-h-[70vh] overflow-y-auto whitespace-pre-wrap font-mono text-sm bg-white dark:bg-gray-800 border-2 border-black dark:border-gray-100 rounded-none p-4",
             elements.length === 0 ? "cursor-text" : "select-text",
-            !rawInput && "flex items-center justify-center"
+            elements.length === 0 && !rawInput && "flex items-center justify-center"
           )}
           onInput={(e) => {
             if (elements.length) return;
