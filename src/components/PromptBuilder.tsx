@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { cn, estimateTokenCount, formatTokenCount } from '@/lib/utils';
 import ElementEditor from './ElementEditor';
 import ElementTree from './ElementTree';
+import { xmlStringToElements } from '@/lib/xml-parser';
 
 export interface XMLElement {
   id: string;
@@ -21,6 +22,7 @@ const PromptBuilder: React.FC = () => {
   const [outputXML, setOutputXML] = useState<string>('');
   const [selectedElement, setSelectedElement] = useState<XMLElement | null>(null);
   const [tokenCount, setTokenCount] = useState<number>(0);
+  const [rawInput, setRawInput] = useState<string>('');
 
   // Generate XML output whenever elements change
   useEffect(() => {
@@ -61,6 +63,43 @@ const PromptBuilder: React.FC = () => {
     setOutputXML(xml);
     setTokenCount(estimateTokenCount(xml));
   }, [elements]);
+
+  useEffect(() => {
+    const previewEl = document.getElementById('xml-preview');
+
+    const handlePaste = (e: ClipboardEvent) => {
+      if (elements.length > 0) return;
+
+      e.preventDefault();
+      const pastedText = e.clipboardData?.getData('text/plain');
+
+      if (pastedText) {
+        try {
+          const parsedElements = xmlStringToElements(pastedText);
+          setElements(parsedElements);
+          setRawInput(''); // Clear raw input on success
+          toast.success("XML pasted and parsed successfully!");
+        } catch (error) {
+          setRawInput(pastedText); // Keep the user's pasted text on error
+          if (error instanceof Error) {
+            toast.error(error.message);
+          } else {
+            toast.error("An unknown error occurred while parsing the XML.");
+          }
+        }
+      }
+    };
+
+    if (previewEl) {
+      previewEl.addEventListener('paste', handlePaste);
+    }
+
+    return () => {
+      if (previewEl) {
+        previewEl.removeEventListener('paste', handlePaste);
+      }
+    };
+  }, [elements, rawInput]);
 
   // Update selectedElement reference when elements change to prevent stale state
   useEffect(() => {
@@ -326,23 +365,42 @@ const PromptBuilder: React.FC = () => {
     toast.success("XML copied to clipboard!");
   };
 
+  const clearAll = () => {
+    setElements([]);
+    setSelectedElement(null);
+    setRawInput('');
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card className="p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.5)] border-2 border-black dark:border-gray-100 rounded-none bg-[#F2FCE2] dark:bg-gray-800">
         <h2 className="text-xl font-bold mb-4 flex justify-between items-center border-b-2 border-black dark:border-gray-100 pb-2">
           <span className="font-black">Structure Builder</span>
-          <Button 
-            onClick={addNewElement} 
-            size="sm" 
-            className="flex items-center gap-1 bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
-          >
-            <Plus className="h-4 w-4 stroke-[3]" /> Add Element
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={clearAll}
+              size="sm"
+              disabled={!elements.length}
+              className="flex items-center gap-1 bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
+            >
+              <Trash className="h-4 w-4 stroke-[3]" /> clear
+            </Button>
+            <Button 
+              onClick={addNewElement} 
+              size="sm" 
+              className="flex items-center gap-1 bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
+            >
+              <Plus className="h-4 w-4 stroke-[3]" /> add element
+            </Button>
+          </div>
         </h2>
         
-        <div className="mb-6 bg-white dark:bg-gray-800 rounded-none border-2 border-black dark:border-gray-100 p-4 min-h-[200px] max-h-[60vh] overflow-y-auto font-mono">
+        <div className={cn(
+          "mb-6 bg-white dark:bg-gray-800 rounded-none border-2 border-black dark:border-gray-100 p-4 min-h-[200px] max-h-[60vh] overflow-y-auto font-mono",
+          elements.length === 0 && "flex items-center justify-center"
+        )}>
           {elements.length === 0 ? (
-            <div className="text-center text-gray-500 py-8">
+            <div className="text-center text-gray-400 text-sm">
               <p>No elements yet. Add an element to begin building your prompt.</p>
             </div>
           ) : (
@@ -359,15 +417,18 @@ const PromptBuilder: React.FC = () => {
           )}
         </div>
 
-        <div className="border-2 border-black dark:border-gray-100 p-4 bg-white dark:bg-gray-800 rounded-none">
+        <div className={cn(
+          "border-2 border-black dark:border-gray-100 p-4 bg-white dark:bg-gray-800 rounded-none min-h-[160px]",
+          !selectedElement && "flex items-center justify-center"
+        )}>
           {selectedElement ? (
             <ElementEditor 
               element={selectedElement} 
               onUpdate={updateElement} 
             />
           ) : (
-            <div className="text-center text-gray-500 py-8">
-              <p>Select an element to edit its properties.</p>
+            <div className="text-center text-gray-400">
+              <p className="font-mono text-sm">Select an element to edit its properties.</p>
             </div>
           )}
         </div>
@@ -389,8 +450,22 @@ const PromptBuilder: React.FC = () => {
             </Button>
           </div>
         </h2>
-        <pre className="bg-white dark:bg-gray-800 border-2 border-black dark:border-gray-100 rounded-none p-4 overflow-x-auto whitespace-pre-wrap min-h-[400px] max-h-[70vh] overflow-y-auto font-mono text-sm">
-          {outputXML || '<-- Your XML will appear here -->'}
+        <pre
+          id="xml-preview"
+          contentEditable={elements.length === 0}
+          suppressContentEditableWarning
+          data-placeholder="Paste XML here."
+          className={cn(
+            "relative w-full min-h-[400px] max-h-[70vh] overflow-y-auto whitespace-pre-wrap font-mono text-sm bg-white dark:bg-gray-800 border-2 border-black dark:border-gray-100 rounded-none p-4",
+            elements.length === 0 ? "cursor-text" : "select-text",
+            elements.length === 0 && !rawInput && "flex items-center justify-center"
+          )}
+          onInput={(e) => {
+            if (elements.length) return;
+            setRawInput((e.target as HTMLElement).innerText);
+          }}
+        >
+          {elements.length === 0 ? rawInput : outputXML}
         </pre>
       </Card>
     </div>
