@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { cn, estimateTokenCount, formatTokenCount } from '@/lib/utils';
 import ElementEditor from './ElementEditor';
 import ElementTree from './ElementTree';
+import { xmlStringToElements } from '@/lib/xml-parser';
 
 export interface XMLElement {
   id: string;
@@ -21,6 +22,7 @@ const PromptBuilder: React.FC = () => {
   const [outputXML, setOutputXML] = useState<string>('');
   const [selectedElement, setSelectedElement] = useState<XMLElement | null>(null);
   const [tokenCount, setTokenCount] = useState<number>(0);
+  const [rawInput, setRawInput] = useState<string>('');
 
   // Generate XML output whenever elements change
   useEffect(() => {
@@ -61,6 +63,43 @@ const PromptBuilder: React.FC = () => {
     setOutputXML(xml);
     setTokenCount(estimateTokenCount(xml));
   }, [elements]);
+
+  useEffect(() => {
+    const previewEl = document.getElementById('xml-preview');
+
+    const handlePaste = (e: ClipboardEvent) => {
+      if (elements.length > 0) return;
+
+      e.preventDefault();
+      const pastedText = e.clipboardData?.getData('text/plain');
+
+      if (pastedText) {
+        try {
+          const parsedElements = xmlStringToElements(pastedText);
+          setElements(parsedElements);
+          setRawInput(''); // Clear raw input on success
+          toast.success("XML pasted and parsed successfully!");
+        } catch (error) {
+          setRawInput(pastedText); // Keep the user's pasted text on error
+          if (error instanceof Error) {
+            toast.error(error.message);
+          } else {
+            toast.error("An unknown error occurred while parsing the XML.");
+          }
+        }
+      }
+    };
+
+    if (previewEl) {
+      previewEl.addEventListener('paste', handlePaste);
+    }
+
+    return () => {
+      if (previewEl) {
+        previewEl.removeEventListener('paste', handlePaste);
+      }
+    };
+  }, [elements, rawInput]);
 
   // Update selectedElement reference when elements change to prevent stale state
   useEffect(() => {
@@ -389,8 +428,21 @@ const PromptBuilder: React.FC = () => {
             </Button>
           </div>
         </h2>
-        <pre className="bg-white dark:bg-gray-800 border-2 border-black dark:border-gray-100 rounded-none p-4 overflow-x-auto whitespace-pre-wrap min-h-[400px] max-h-[70vh] overflow-y-auto font-mono text-sm">
-          {outputXML || '<-- Your XML will appear here -->'}
+        <pre
+          id="xml-preview"
+          contentEditable={elements.length === 0}
+          suppressContentEditableWarning
+          data-placeholder="Paste XML here…"
+          className={cn(
+            "relative w-full min-h-[400px] max-h-[70vh] overflow-y-auto whitespace-pre-wrap font-mono text-sm bg-white dark:bg-gray-800 border-2 border-black dark:border-gray-100 rounded-none p-4",
+            elements.length === 0 ? "cursor-text" : "select-text"
+          )}
+          onInput={(e) => {
+            if (elements.length) return;
+            setRawInput((e.target as HTMLElement).innerText);
+          }}
+        >
+          {elements.length === 0 ? rawInput : outputXML}
         </pre>
       </Card>
     </div>
