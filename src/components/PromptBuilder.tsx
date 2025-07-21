@@ -29,7 +29,7 @@ const PromptBuilder: React.FC = () => {
   useEffect(() => {
     const generateXML = (elements: XMLElement[], indentLevel = 0): string => {
       return elements
-        .filter(element => element.isVisible)
+        .filter(element => element.isVisible !== false)
         .map(element => {
         const indent = '  '.repeat(indentLevel);
         const hasChildren = element.children && element.children.length > 0;
