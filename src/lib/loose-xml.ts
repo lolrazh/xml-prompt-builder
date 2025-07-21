@@ -123,6 +123,7 @@ export function looseParseXML(xml: string): XMLElement[] {
       tagName: tag,
       content: children.length ? "" : segs.join(""),
       children,
+      isVisible: true,
     };
   };
 
