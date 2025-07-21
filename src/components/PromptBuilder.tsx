@@ -15,6 +15,7 @@ export interface XMLElement {
   content: string;
   children: XMLElement[];
   collapsed?: boolean;
+  isVisible?: boolean;
 }
 
 const PromptBuilder: React.FC = () => {
@@ -27,7 +28,9 @@ const PromptBuilder: React.FC = () => {
   // Generate XML output whenever elements change
   useEffect(() => {
     const generateXML = (elements: XMLElement[], indentLevel = 0): string => {
-      return elements.map(element => {
+      return elements
+        .filter(element => element.isVisible !== false)
+        .map(element => {
         const indent = '  '.repeat(indentLevel);
         const hasChildren = element.children && element.children.length > 0;
         const hasContent = element.content.trim().length > 0;
@@ -132,7 +135,8 @@ const PromptBuilder: React.FC = () => {
       id: `element-${Date.now()}`,
       tagName: 'new-element',
       content: '',
-      children: []
+      children: [],
+      isVisible: true
     };
     
     setElements([...elements, newElement]);
@@ -213,7 +217,8 @@ const PromptBuilder: React.FC = () => {
       id: `element-${Date.now()}`,
       tagName: 'child-element',
       content: '',
-      children: []
+      children: [],
+      isVisible: true
     };
     
     const addChildRecursive = (elements: XMLElement[]): XMLElement[] => {
@@ -257,6 +262,28 @@ const PromptBuilder: React.FC = () => {
     };
     
     const newElements = toggleCollapseRecursive(elements);
+    setElements(newElements);
+  };
+
+  const toggleVisibilityElement = (elementId: string) => {
+    const toggleVisibilityRecursive = (elements: XMLElement[]): XMLElement[] => {
+      return elements.map(el => {
+        if (el.id === elementId) {
+          return {
+            ...el,
+            isVisible: !el.isVisible
+          };
+        } else if (el.children.length > 0) {
+          return {
+            ...el,
+            children: toggleVisibilityRecursive(el.children)
+          };
+        }
+        return el;
+      });
+    };
+    
+    const newElements = toggleVisibilityRecursive(elements);
     setElements(newElements);
   };
 
@@ -404,6 +431,7 @@ const PromptBuilder: React.FC = () => {
               onAddChild={addChildElement}
               onDelete={deleteElement}
               onToggleCollapse={toggleCollapseElement}
+              onToggleVisibility={toggleVisibilityElement} // Add this line
               onMoveUp={moveElementUp}
               onMoveDown={moveElementDown}
               selectedElementId={selectedElement?.id}

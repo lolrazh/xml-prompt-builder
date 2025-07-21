@@ -2,7 +2,7 @@
 import React from 'react';
 import { XMLElement } from './PromptBuilder';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight, Plus, Trash, ArrowUp, ArrowDown } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, Trash, ArrowUp, ArrowDown, Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ElementTreeProps {
@@ -11,6 +11,7 @@ interface ElementTreeProps {
   onAddChild: (elementId: string) => void;
   onDelete: (elementId: string) => void;
   onToggleCollapse: (elementId: string) => void;
+  onToggleVisibility: (elementId: string) => void; // Add this line
   onMoveUp: (elementId: string) => void;
   onMoveDown: (elementId: string) => void;
   selectedElementId: string | undefined;
@@ -23,6 +24,7 @@ const ElementTree: React.FC<ElementTreeProps> = ({
   onAddChild,
   onDelete,
   onToggleCollapse,
+  onToggleVisibility, // Add this line
   onMoveUp,
   onMoveDown,
   selectedElementId,
@@ -69,6 +71,18 @@ const ElementTree: React.FC<ElementTreeProps> = ({
             </div>
             
             <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleVisibility(element.id);
+                }}
+              >
+                {element.isVisible ? <Eye className="h-4 w-4 stroke-[3]" /> : <EyeOff className="h-4 w-4 stroke-[3]" />}
+              </Button>
+
               <Button
                 variant="ghost"
                 size="icon"
@@ -126,6 +140,7 @@ const ElementTree: React.FC<ElementTreeProps> = ({
               onAddChild={onAddChild}
               onDelete={onDelete}
               onToggleCollapse={onToggleCollapse}
+              onToggleVisibility={onToggleVisibility}
               onMoveUp={onMoveUp}
               onMoveDown={onMoveDown}
               selectedElementId={selectedElementId}
