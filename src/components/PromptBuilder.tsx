@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Trash, Plus, Copy, MoveVertical, Upload } from 'lucide-react';
+import { Trash, Plus, Copy, MoveVertical, Upload, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn, estimateTokenCount, formatTokenCount } from '@/lib/utils';
 import ElementEditor from './ElementEditor';
@@ -19,6 +19,11 @@ export interface XMLElement {
 }
 
 const PromptBuilder: React.FC = () => {
+  const STORAGE_KEYS = {
+    elements: 'xmlPromptBuilder.elements',
+    rawInput: 'xmlPromptBuilder.rawInput',
+  } as const;
+
   const [elements, setElements] = useState<XMLElement[]>([]);
   const [outputXML, setOutputXML] = useState<string>('');
   const [selectedElement, setSelectedElement] = useState<XMLElement | null>(null);
@@ -124,6 +129,40 @@ const PromptBuilder: React.FC = () => {
     setIsDragActive(false);
   };
 
+  // Hydrate from localStorage on first load
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.elements);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const hydrate = (nodes: any[]): XMLElement[] => {
+          if (!Array.isArray(nodes)) return [];
+          const mapNode = (n: any): XMLElement => ({
+            id: typeof n?.id === 'string' ? n.id : `element-${Date.now()}-${Math.random()}`,
+            tagName: typeof n?.tagName === 'string' ? n.tagName : 'element',
+            content: typeof n?.content === 'string' ? n.content : '',
+            children: Array.isArray(n?.children) ? n.children.map(mapNode) : [],
+            collapsed: typeof n?.collapsed === 'boolean' ? n.collapsed : undefined,
+            isVisible: typeof n?.isVisible === 'boolean' ? n.isVisible : true,
+          });
+          return nodes.map(mapNode);
+        };
+        const hydrated = hydrate(parsed);
+        if (hydrated.length > 0) {
+          setElements(hydrated);
+          return; // prefer restored structure over raw input
+        }
+      }
+      const savedRaw = localStorage.getItem(STORAGE_KEYS.rawInput);
+      if (savedRaw) {
+        setRawInput(savedRaw);
+      }
+    } catch {
+      // ignore restore errors
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Generate XML output whenever elements change
   useEffect(() => {
     const generateXML = (elements: XMLElement[], indentLevel = 0): string => {
@@ -164,6 +203,17 @@ const PromptBuilder: React.FC = () => {
     const xml = generateXML(elements);
     setOutputXML(xml);
     setTokenCount(estimateTokenCount(xml));
+    // Persist elements
+    try {
+      if (elements.length > 0) {
+        localStorage.setItem(STORAGE_KEYS.elements, JSON.stringify(elements));
+        localStorage.removeItem(STORAGE_KEYS.rawInput);
+      } else {
+        localStorage.removeItem(STORAGE_KEYS.elements);
+      }
+    } catch {
+      // ignore storage errors
+    }
   }, [elements]);
 
   useEffect(() => {
@@ -228,6 +278,21 @@ const PromptBuilder: React.FC = () => {
       }
     }
   }, [elements, selectedElement]);
+
+  // Persist raw input when builder is empty
+  useEffect(() => {
+    if (elements.length === 0) {
+      try {
+        if (rawInput && rawInput.length > 0) {
+          localStorage.setItem(STORAGE_KEYS.rawInput, rawInput);
+        } else {
+          localStorage.removeItem(STORAGE_KEYS.rawInput);
+        }
+      } catch {
+        // ignore storage errors
+      }
+    }
+  }, [rawInput, elements.length]);
 
   const addNewElement = () => {
     const newElement: XMLElement = {
@@ -485,10 +550,30 @@ const PromptBuilder: React.FC = () => {
     toast.success("XML copied to clipboard!");
   };
 
+  const exportToFile = () => {
+    const text = elements.length === 0 ? rawInput : outputXML;
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'prompt.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('Exported to prompt.txt');
+  };
+
   const clearAll = () => {
     setElements([]);
     setSelectedElement(null);
     setRawInput('');
+    try {
+      localStorage.removeItem(STORAGE_KEYS.elements);
+      localStorage.removeItem(STORAGE_KEYS.rawInput);
+    } catch {
+      // ignore storage errors
+    }
   };
 
   return (
@@ -576,6 +661,14 @@ const PromptBuilder: React.FC = () => {
             <span className="text-sm font-mono font-bold text-gray-600 dark:text-gray-400 pr-1">
               ~{formatTokenCount(tokenCount)}
             </span>
+            <Button 
+              onClick={exportToFile}
+              size="sm"
+              disabled={(elements.length === 0 ? (rawInput.trim().length === 0) : (outputXML.trim().length === 0))}
+              className="flex items-center gap-1 bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
+            >
+              <Download className="h-4 w-4 stroke-[3]" /> Export
+            </Button>
             <Button 
               onClick={copyToClipboard} 
               size="sm" 
