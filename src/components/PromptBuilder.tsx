@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Trash, Plus, Copy, MoveVertical } from 'lucide-react';
+import { Trash, Plus, Copy, MoveVertical, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn, estimateTokenCount, formatTokenCount } from '@/lib/utils';
 import ElementEditor from './ElementEditor';
@@ -24,6 +24,105 @@ const PromptBuilder: React.FC = () => {
   const [selectedElement, setSelectedElement] = useState<XMLElement | null>(null);
   const [tokenCount, setTokenCount] = useState<number>(0);
   const [rawInput, setRawInput] = useState<string>('');
+  const [isDragActive, setIsDragActive] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const importFromText = async (text: string) => {
+    try {
+      const parsed = looseParseXML(text);
+      setElements(parsed);
+      setSelectedElement(null);
+      setRawInput('');
+      toast.success('Imported!');
+    } catch (err: any) {
+      setRawInput(text);
+      toast.error(err?.message || 'Parse error');
+    }
+  };
+
+  const isLikelyTextFile = (file: File): boolean => {
+    const allowedTypes = [
+      'text/plain',
+      'text/xml',
+      'application/xml',
+      'application/xhtml+xml',
+      'application/rss+xml',
+      'application/atom+xml',
+      'application/x-plist',
+      'image/svg+xml',
+    ];
+    if (allowedTypes.includes(file.type)) return true;
+    const name = file.name.toLowerCase();
+    return (
+      name.endsWith('.xml') ||
+      name.endsWith('.txt') ||
+      name.endsWith('.html') ||
+      name.endsWith('.htm') ||
+      name.endsWith('.svg') ||
+      name.endsWith('.rss') ||
+      name.endsWith('.atom') ||
+      name.endsWith('.plist')
+    );
+  };
+
+  const handleFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    if (!isLikelyTextFile(file)) {
+      toast.error('Unsupported file type. Please select a text or XML file.');
+      return;
+    }
+    try {
+      const text = await file.text();
+      await importFromText(text);
+    } catch (e) {
+      toast.error('Failed to read the file.');
+    }
+  };
+
+  const onClickImport = () => {
+    if (elements.length > 0) {
+      const proceed = window.confirm('Importing will replace the current structure. Continue?');
+      if (!proceed) return;
+    }
+    fileInputRef.current?.click();
+  };
+
+  const onFileInputChange: React.ChangeEventHandler<HTMLInputElement> = async (e) => {
+    await handleFiles(e.target.files);
+    // reset value to allow re-uploading the same file
+    if (e.target) e.target.value = '';
+  };
+
+  const onDrop: React.DragEventHandler<HTMLPreElement> = async (e) => {
+    if (elements.length > 0) return; // Only active when empty per requirement
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(false);
+    const items = e.dataTransfer?.files || null;
+    await handleFiles(items);
+  };
+
+  const onDragOver: React.DragEventHandler<HTMLPreElement> = (e) => {
+    if (elements.length > 0) return; // Only active when empty per requirement
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(true);
+  };
+
+  const onDragEnter: React.DragEventHandler<HTMLPreElement> = (e) => {
+    if (elements.length > 0) return; // Only active when empty per requirement
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(true);
+  };
+
+  const onDragLeave: React.DragEventHandler<HTMLPreElement> = (e) => {
+    if (elements.length > 0) return; // Only active when empty per requirement
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(false);
+  };
 
   // Generate XML output whenever elements change
   useEffect(() => {
@@ -398,6 +497,20 @@ const PromptBuilder: React.FC = () => {
         <h2 className="text-xl font-bold mb-4 flex justify-between items-center border-b-2 border-black dark:border-gray-100 pb-2">
           <span className="font-black">Structure Builder</span>
           <div className="flex items-center gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xml,.txt,.html,.htm,.svg,.rss,.atom,.plist"
+              className="hidden"
+              onChange={onFileInputChange}
+            />
+            <Button
+              onClick={onClickImport}
+              size="sm"
+              className="flex items-center gap-1 bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
+            >
+              <Upload className="h-4 w-4 stroke-[3]" /> import
+            </Button>
             <Button
               onClick={clearAll}
               size="sm"
@@ -480,14 +593,19 @@ const PromptBuilder: React.FC = () => {
           className={cn(
             "relative w-full min-h-[400px] max-h-[70vh] overflow-y-auto whitespace-pre-wrap font-mono text-sm bg-white dark:bg-gray-800 border-2 border-black dark:border-gray-100 rounded-none p-4",
             elements.length === 0 ? "cursor-text" : "select-text",
-            elements.length === 0 && !rawInput && "flex items-center justify-center"
+            elements.length === 0 && !rawInput && "flex items-center justify-center",
+            elements.length === 0 && isDragActive && "border-dashed bg-[#F2FCE2]"
           )}
           onInput={(e) => {
             if (elements.length) return;
             setRawInput((e.target as HTMLElement).innerText);
           }}
+          onDrop={onDrop}
+          onDragOver={onDragOver}
+          onDragEnter={onDragEnter}
+          onDragLeave={onDragLeave}
         >
-          {elements.length === 0 ? rawInput : outputXML}
+          {elements.length === 0 ? (rawInput || (isDragActive ? 'Drop file to import…' : '')) : outputXML}
         </pre>
       </Card>
     </div>
