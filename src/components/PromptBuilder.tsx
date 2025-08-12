@@ -27,6 +27,52 @@ const PromptBuilder: React.FC = () => {
   const [isDragActive, setIsDragActive] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Serialize a single node (and its visible descendants) into XML with indentation
+  const serializeNode = (element: XMLElement, indentLevel = 0): string => {
+    if (element.isVisible === false) return '';
+
+    const indent = '  '.repeat(indentLevel);
+    const hasChildren = element.children && element.children.length > 0;
+    const hasContent = (element.content || '').trim().length > 0;
+
+    let xml = `${indent}<${element.tagName}>`;
+
+    if (hasContent) {
+      xml += `\n${indent}  ${element.content}\n${indent}`;
+    }
+
+    if (hasChildren) {
+      const childrenXml = element.children
+        .map((child) => serializeNode(child, indentLevel + 1))
+        .filter(Boolean)
+        .join('\n');
+      if (childrenXml) {
+        if (hasContent) {
+          xml += childrenXml;
+        } else {
+          xml += `\n${childrenXml}\n${indent}`;
+        }
+      } else if (!hasContent) {
+        // ensure closing tag is on a new line if nothing inside
+        xml += "\n" + indent;
+      }
+    } else if (!hasContent) {
+      // ensure closing tag is on a new line if nothing inside
+      xml += "\n" + indent;
+    }
+
+    xml += `</${element.tagName}>`;
+    return xml;
+  };
+
+  // Serialize the entire tree (visible nodes only)
+  const serializeTree = (nodes: XMLElement[]): string =>
+    nodes
+      .filter((n) => n.isVisible !== false)
+      .map((n) => serializeNode(n, 0))
+      .filter(Boolean)
+      .join('\n');
+
   const importFromText = async (text: string) => {
     try {
       const parsed = looseParseXML(text);
@@ -126,42 +172,7 @@ const PromptBuilder: React.FC = () => {
 
   // Generate XML output whenever elements change
   useEffect(() => {
-    const generateXML = (elements: XMLElement[], indentLevel = 0): string => {
-      return elements
-        .filter(element => element.isVisible !== false)
-        .map(element => {
-        const indent = '  '.repeat(indentLevel);
-        const hasChildren = element.children && element.children.length > 0;
-        const hasContent = element.content.trim().length > 0;
-        
-        // Start with opening tag
-        let xml = `${indent}<${element.tagName}>`;
-        
-        // Add content with proper indentation if exists
-        if (hasContent) {
-          xml += `\n${indent}  ${element.content}\n${indent}`;
-        }
-        
-        // Add children
-        if (hasChildren) {
-          const childrenXml = generateXML(element.children, indentLevel + 1);
-          if (hasContent) {
-            xml += childrenXml;
-          } else {
-            xml += `\n${childrenXml}\n${indent}`;
-          }
-        } else if (!hasContent) {
-          // Always ensure the closing tag is on a new line
-          xml += "\n" + indent;
-        }
-        
-        // Add closing tag
-        xml += `</${element.tagName}>`;
-        return xml;
-      }).join('\n');
-    };
-
-    const xml = generateXML(elements);
+    const xml = serializeTree(elements);
     setOutputXML(xml);
     setTokenCount(estimateTokenCount(xml));
   }, [elements]);
@@ -490,6 +501,80 @@ const PromptBuilder: React.FC = () => {
     setSelectedElement(null);
     setRawInput('');
   };
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const isTypingTarget = (el: Element | null) => {
+      if (!el) return false;
+      const tagName = (el as HTMLElement).tagName;
+      if (tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT') return true;
+      const he = el as HTMLElement;
+      if (he.isContentEditable) return true;
+      return false;
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      // Do not intercept when typing in inputs/textarea/contentEditable
+      if (isTypingTarget(document.activeElement)) return;
+
+      const key = e.key;
+      const lower = key.toLowerCase();
+
+      // Copy (Cmd/Ctrl + C)
+      if ((e.metaKey || e.ctrlKey) && lower === 'c') {
+        e.preventDefault();
+        if (selectedElement) {
+          const xml = serializeNode(selectedElement);
+          navigator.clipboard.writeText(xml).then(() => toast.success('Element XML copied'));
+        } else {
+          navigator.clipboard.writeText(outputXML).then(() => toast.success('XML copied'));
+        }
+        return;
+      }
+
+      // Add root element ("a") or add child ("Shift+a")
+      if (!e.ctrlKey && !e.metaKey && !e.altKey && lower === 'a') {
+        e.preventDefault();
+        if (e.shiftKey && selectedElement) {
+          addChildElement(selectedElement.id);
+        } else {
+          addNewElement();
+        }
+        return;
+      }
+
+      // Delete/Backspace deletes selected element
+      if ((key === 'Delete' || key === 'Backspace') && selectedElement) {
+        e.preventDefault();
+        deleteElement(selectedElement.id);
+        return;
+      }
+
+      // Alt + ArrowUp / ArrowDown to reorder among siblings
+      if (e.altKey && key === 'ArrowUp' && selectedElement) {
+        e.preventDefault();
+        moveElementUp(selectedElement.id);
+        return;
+      }
+      if (e.altKey && key === 'ArrowDown' && selectedElement) {
+        e.preventDefault();
+        moveElementDown(selectedElement.id);
+        return;
+      }
+
+      // Space to collapse/expand selected element
+      if (!e.ctrlKey && !e.metaKey && !e.altKey && key === ' ') {
+        if (selectedElement) {
+          e.preventDefault();
+          toggleCollapseElement(selectedElement.id);
+        }
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [selectedElement, outputXML]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
