@@ -3,11 +3,11 @@ import React from 'react';
 import PromptBuilder from '../components/PromptBuilder';
 import { PlusCircle, Sparkles, ClipboardPaste, Code } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@workos-inc/authkit-react';
+import { useAuthWithCache } from '@/auth/useAuthWithCache';
 import Header from '../components/Header';
 
 const Index = () => {
-  const { user, signIn, signOut, isLoading } = useAuth();
+  const { user } = useAuthWithCache();
   // Header handles navigation internally
 
   return (

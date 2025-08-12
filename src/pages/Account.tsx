@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAuth } from '@workos-inc/authkit-react';
+import { useAuthWithCache } from '@/auth/useAuthWithCache';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
@@ -12,7 +12,7 @@ const Row: React.FC<{ label: string; value?: React.ReactNode }> = ({ label, valu
 );
 
 const Account: React.FC = () => {
-  const { user, signIn, signOut, isLoading } = useAuth();
+  const { user, signIn, signOut, isLoading, isHydratingFromCache } = useAuthWithCache();
   const navigate = useNavigate();
   const onClickAccount = () => navigate('/account');
 
@@ -91,7 +91,17 @@ const Account: React.FC = () => {
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={user.profilePictureUrl} alt="Profile" className="h-full w-full object-cover" />
                 ) : (
-                  <div className="h-full w-full bg-gray-200" />
+                  <div className="h-full w-full grid grid-cols-8 grid-rows-8">
+                    {Array.from({ length: 64 }).map((_, i) => {
+                      const row = Math.floor(i / 8);
+                      const col = i % 8;
+                      const on = QUESTION_MASK[row][col];
+                      return (
+                        // eslint-disable-next-line react/no-array-index-key
+                        <div key={i} className={on ? 'bg-gray-800' : 'bg-transparent'} style={{ imageRendering: 'pixelated' as any }} />
+                      );
+                    })}
+                  </div>
                 )}
               </div>
               <div>
@@ -132,4 +142,15 @@ const Account: React.FC = () => {
 
 export default Account;
 
+
+const QUESTION_MASK: boolean[][] = [
+  [false, true,  true,  true,  true,  true,  false, false],
+  [true,  false, false, false, false, true,  false, false],
+  [false, false, false, true,  true,  true,  false, false],
+  [false, false, true,  false, false, true,  false, false],
+  [false, false, true,  true,  true,  false, false, false],
+  [false, false, false, false, true,  false, false, false],
+  [false, false, false, false, true,  false, false, false],
+  [false, false, false, false, true,  false, false, false],
+];
 

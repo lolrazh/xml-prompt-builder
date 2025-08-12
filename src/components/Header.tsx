@@ -1,7 +1,7 @@
 import React from 'react';
 import { Code, Github } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@workos-inc/authkit-react';
+import { useAuthWithCache } from '@/auth/useAuthWithCache';
 import { useNavigate } from 'react-router-dom';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import HelpDialog from './HelpDialog';
@@ -11,7 +11,8 @@ type HeaderProps = {
 };
 
 const Header: React.FC<HeaderProps> = ({ variant = 'index' }) => {
-  const { user, signIn, signOut, isLoading } = useAuth();
+  const { user, signIn, signOut, isLoading, isHydratingFromCache } = useAuthWithCache();
+  
   const navigate = useNavigate();
 
   const onClickAccount = () => navigate('/account');
@@ -59,7 +60,22 @@ const Header: React.FC<HeaderProps> = ({ variant = 'index' }) => {
                       referrerPolicy="no-referrer"
                     />
                   ) : (
-                    <div className="h-full w-full bg-gray-200" />
+                    // Pixelated question mark while loading or when no picture
+                    <div className="h-full w-full">
+                      <div className="h-full w-full bg-white">
+                        <div className="h-full w-full grid grid-cols-8 grid-rows-8">
+                          {Array.from({ length: 64 }).map((_, i) => {
+                            const row = Math.floor(i / 8);
+                            const col = i % 8;
+                            const on = QUESTION_MASK[row][col];
+                            return (
+                              // eslint-disable-next-line react/no-array-index-key
+                              <div key={i} className={on ? 'bg-gray-800' : 'bg-transparent'} style={{ imageRendering: 'pixelated' as any }} />
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </button>
               </DropdownMenu.Trigger>
@@ -93,4 +109,16 @@ const Header: React.FC<HeaderProps> = ({ variant = 'index' }) => {
 
 export default Header;
 
+
+
+const QUESTION_MASK: boolean[][] = [
+  [false, true,  true,  true,  true,  true,  false, false],
+  [true,  false, false, false, false, true,  false, false],
+  [false, false, false, true,  true,  true,  false, false],
+  [false, false, true,  false, false, true,  false, false],
+  [false, false, true,  true,  true,  false, false, false],
+  [false, false, false, false, true,  false, false, false],
+  [false, false, false, false, true,  false, false, false],
+  [false, false, false, false, true,  false, false, false],
+];
 
