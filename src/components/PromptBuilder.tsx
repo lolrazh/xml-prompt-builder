@@ -250,6 +250,7 @@ const PromptBuilder: React.FC = () => {
     };
     
     setElements([...elements, newElement]);
+    setSelectedElement(newElement);
   };
 
   const updateElement = (updatedElement: XMLElement) => {
@@ -351,6 +352,7 @@ const PromptBuilder: React.FC = () => {
     
     const newElements = addChildRecursive(elements);
     setElements(newElements);
+    setSelectedElement(newChild);
   };
 
   const toggleCollapseElement = (elementId: string) => {
