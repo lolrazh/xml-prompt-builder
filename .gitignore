@@ -64,3 +64,5 @@ lerna-debug.log*
 
 # misc
 .DS_Store
+
+wrangler.jsonc
