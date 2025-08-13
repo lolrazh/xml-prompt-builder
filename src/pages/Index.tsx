@@ -32,6 +32,11 @@ const Index = () => {
         const res = await fetch(`${apiBase}/api/prompts`, {
           headers: { Authorization: `Bearer ${token}` },
         });
+        if (res.status === 401) {
+          // Token invalid, user needs to sign in again
+          setPrompts([]);
+          return;
+        }
         if (!res.ok) throw new Error('Failed to load prompts');
         const data = await res.json();
         const list = Array.isArray(data)

@@ -36,12 +36,13 @@ export function useAuthWithCache() {
     if (auth.user) {
       saveCachedUser(toCachedUser(auth.user));
       hasSavedOnceRef.current = true;
-    } else if (!auth.isLoading && !auth.user && hasSavedOnceRef.current) {
-      // Completed loading and no user but we had a user before -> likely refresh token expired
-      // Clear cache to avoid confusion
-      clearCachedUser();
+    } else if (!auth.isLoading && !auth.user) {
+      // Completed loading and no user -> clear cache to avoid stale data
+      if (cached) {
+        clearCachedUser();
+      }
     }
-  }, [auth.user, auth.isLoading]);
+  }, [auth.user, auth.isLoading, cached]);
 
   const displayUser: DisplayUser | null = useMemo(() => {
     return (auth.user as any) ?? cached ?? null;
