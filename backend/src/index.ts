@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { cors } from 'hono/cors'
 import jwt from '@tsndr/cloudflare-worker-jwt'
 import type { D1Database } from '@cloudflare/workers-types'
 
@@ -41,6 +42,13 @@ type Variables = {
 }
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>()
+
+// Configure CORS to allow requests from the frontend
+app.use('*', cors({
+  origin: ['https://xml.soy.run', 'http://localhost:8080'],
+  allowHeaders: ['Content-Type', 'Authorization'],
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+}))
 
 // Simple global JWKS cache (per-worker instance)
 const globalScope = globalThis as unknown as {

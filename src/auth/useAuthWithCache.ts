@@ -36,8 +36,9 @@ export function useAuthWithCache() {
     if (auth.user) {
       saveCachedUser(toCachedUser(auth.user));
       hasSavedOnceRef.current = true;
-    } else if (!auth.isLoading && !auth.user) {
-      // Completed loading and no user -> ensure cache cleared
+    } else if (!auth.isLoading && !auth.user && hasSavedOnceRef.current) {
+      // Completed loading and no user but we had a user before -> likely refresh token expired
+      // Clear cache to avoid confusion
       clearCachedUser();
     }
   }, [auth.user, auth.isLoading]);

@@ -17,7 +17,7 @@ const App = () => {
   const clientId = import.meta.env.VITE_WORKOS_CLIENT_ID as string | undefined;
   const apiHostname = import.meta.env.VITE_WORKOS_API_HOSTNAME as string | undefined;
   const devModeEnv = import.meta.env.VITE_WORKOS_DEV_MODE as unknown as string | undefined;
-  const devMode = devModeEnv ? devModeEnv === 'true' : true;
+  const devMode = devModeEnv ? devModeEnv === 'true' : !import.meta.env.PROD;
 
   if (!clientId) {
     // eslint-disable-next-line no-console
