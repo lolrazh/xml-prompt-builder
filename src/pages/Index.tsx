@@ -1,13 +1,53 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import PromptBuilder from '../components/PromptBuilder';
 import { PlusCircle, Sparkles, ClipboardPaste, Code } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthWithCache } from '@/auth/useAuthWithCache';
 import Header from '../components/Header';
+ 
+import { useAuth } from '@workos-inc/authkit-react';
+import { ChevronDown } from 'lucide-react';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 
 const Index = () => {
   const { user } = useAuthWithCache();
+  const { getAccessToken } = useAuth();
+  const [prompts, setPrompts] = useState<Array<{ id: string; name: string }>>([]);
+  const [isLoadingPrompts, setIsLoadingPrompts] = useState(false);
+  const [saveName, setSaveName] = useState<string>("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    const fetchPrompts = async () => {
+      if (!user) return;
+      setIsLoadingPrompts(true);
+      try {
+        const token = await getAccessToken();
+        if (!token) {
+          setPrompts([]);
+          return;
+        }
+        const apiBase = import.meta.env.PROD ? 'https://backend.soyrun.workers.dev' : '';
+        const res = await fetch(`${apiBase}/api/prompts`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error('Failed to load prompts');
+        const data = await res.json();
+        const list = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.prompts)
+          ? data.prompts
+          : [];
+        setPrompts(list.map((p: any) => ({ id: String(p.id), name: String(p.name ?? '') })));
+      } catch {
+        setPrompts([]);
+      } finally {
+        setIsLoadingPrompts(false);
+      }
+    };
+    fetchPrompts();
+  }, [user, getAccessToken]);
   // Header handles navigation internally
 
   return (
@@ -58,10 +98,112 @@ const Index = () => {
               </p>
             </div>
           </div>
+          {user && (
+            <div className="max-w-5xl mx-auto mt-4 flex justify-end">
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger asChild>
+                  <button
+                    className="flex items-center gap-2 px-3 py-2 border-2 border-black bg-white rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                    aria-label="Open prompt library"
+                  >
+                    {isLoadingPrompts ? 'Loading prompts…' : 'Your prompts'}
+                    <ChevronDown className="h-4 w-4" />
+                  </button>
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Content sideOffset={6} className="min-w-[260px] max-h-[300px] overflow-y-auto bg-white border-2 border-black rounded-none p-1 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                  {prompts.length === 0 ? (
+                    <div className="px-3 py-2 text-sm text-gray-500">No saved prompts</div>
+                  ) : (
+                    prompts.map((p) => (
+                      <DropdownMenu.Item key={p.id} asChild>
+                        <button
+                          className="w-full text-left px-3 py-2 hover:bg-[#9AE66E]/30 font-mono text-sm"
+                          onClick={async () => {
+                            try {
+                              const token = await getAccessToken();
+                              if (!token) {
+                                return;
+                              }
+                              const apiBase = import.meta.env.PROD ? 'https://backend.soyrun.workers.dev' : '';
+                              const res = await fetch(`${apiBase}/api/prompts/${p.id}`, {
+                                headers: { Authorization: `Bearer ${token}` },
+                              });
+                              if (!res.ok) throw new Error('Failed to fetch prompt');
+                              const data = await res.json();
+                              const content = String(data?.prompt?.content ?? '');
+                              // import into builder by pasting to rawInput area
+                              const previewEl = document.getElementById('xml-preview');
+                              if (previewEl) {
+                                previewEl.innerText = content;
+                                const event = new Event('input', { bubbles: true });
+                                previewEl.dispatchEvent(event);
+                              }
+                            } catch {}
+                          }}
+                        >
+                          {p.name || 'Untitled'}
+                        </button>
+                      </DropdownMenu.Item>
+                    ))
+                  )}
+                 </DropdownMenu.Content>
+              </DropdownMenu.Root>
+            </div>
+          )}
         </div>
 
         {/* Prompt Builder Component */}
-        <PromptBuilder />
+        <div className="relative">
+          <PromptBuilder />
+          {user && (
+            <div className="mt-6 flex items-center gap-2 justify-end">
+              <input
+                value={saveName}
+                onChange={(e) => setSaveName(e.target.value)}
+                placeholder="prompt name"
+                className="px-2 py-1 border-2 border-black bg-white rounded-none font-mono text-md"
+              />
+              <Button
+                size="sm"
+                disabled={isSaving || !saveName.trim()}
+                className="flex items-center gap-1 bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
+                onClick={async () => {
+                  setIsSaving(true);
+                  try {
+                    const previewEl = document.getElementById('xml-preview');
+                    const xml = previewEl ? previewEl.textContent || '' : '';
+                    const token = await getAccessToken();
+                    if (!token) {
+                      return;
+                    }
+                    const apiBase = import.meta.env.PROD ? 'https://backend.soyrun.workers.dev' : '';
+                    const res = await fetch(`${apiBase}/api/prompts`, {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                      },
+                      body: JSON.stringify({ name: saveName.trim(), content: xml }),
+                    });
+                    if (!res.ok) throw new Error('Failed to save');
+                    const data = await res.json();
+                    const p = data?.prompt;
+                    if (p) {
+                      setPrompts((prev) => {
+                        const next = [{ id: p.id, name: p.name }, ...prev];
+                        const seen = new Set<string>();
+                        return next.filter((x) => (seen.has(x.id) ? false : (seen.add(x.id), true)));
+                      });
+                    }
+                  } catch {}
+                  finally { setIsSaving(false); }
+                }}
+              >
+                Save
+              </Button>
+            </div>
+          )}
+        </div>
         </div>
       </main>
       

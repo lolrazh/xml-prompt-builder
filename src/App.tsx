@@ -8,6 +8,7 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Login.tsx";
 import AuthLogin from "./pages/AuthLogin.tsx";
 import Account from "./pages/Account.tsx";
+import Dashboard from "./pages/Dashboard.tsx";
 import { AuthKitProvider } from "@workos-inc/authkit-react";
 
 const queryClient = new QueryClient();
@@ -27,7 +28,7 @@ const App = () => {
     <AuthKitProvider
       clientId={clientId ?? ""}
       devMode={devMode}
-      redirectUri="http://localhost:8080/login"
+      redirectUri={import.meta.env.PROD ? "https://xml.soy.run/login" : "http://localhost:8080/login"}
       {...(apiHostname ? { apiHostname } : {})}
     >
       <QueryClientProvider client={queryClient}>
@@ -40,6 +41,7 @@ const App = () => {
               <Route path="/login" element={<Login />} />
               <Route path="/auth/login" element={<AuthLogin />} />
               <Route path="/account" element={<Account />} />
+              <Route path="/dashboard" element={<Dashboard />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

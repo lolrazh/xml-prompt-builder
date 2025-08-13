@@ -8,6 +8,14 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    strictPort: true,
+    proxy: {
+      "/api": {
+        target: mode === 'development' ? "http://localhost:8787" : "https://backend.soyrun.workers.dev",
+        changeOrigin: true,
+        // Keep path as-is so the Worker sees /api/*
+      },
+    },
   },
   plugins: [
     react(),
