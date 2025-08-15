@@ -53,4 +53,51 @@ export function clearCachedUser(): void {
   }
 }
 
+export function clearAllAuthStorage(): void {
+  try {
+    // Clear our custom cache
+    clearCachedUser();
+    
+    // Clear all WorkOS/AuthKit related storage
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (
+        key.includes('workos') || 
+        key.includes('authkit') || 
+        key.includes('auth') ||
+        key.includes('session') ||
+        key.includes('token')
+      )) {
+        keysToRemove.push(key);
+      }
+    }
+    
+    keysToRemove.forEach(key => {
+      localStorage.removeItem(key);
+    });
+    
+    // Also clear sessionStorage
+    const sessionKeysToRemove: string[] = [];
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i);
+      if (key && (
+        key.includes('workos') || 
+        key.includes('authkit') || 
+        key.includes('auth') ||
+        key.includes('session') ||
+        key.includes('token')
+      )) {
+        sessionKeysToRemove.push(key);
+      }
+    }
+    
+    sessionKeysToRemove.forEach(key => {
+      sessionStorage.removeItem(key);
+    });
+  } catch (e) {
+    console.warn('Failed to clear auth storage:', e);
+  }
+}
+
 

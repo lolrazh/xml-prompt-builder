@@ -1,5 +1,5 @@
 import React from 'react';
-import { Code, Github } from 'lucide-react';
+import { Code, Github, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthWithCache } from '@/auth/useAuthWithCache';
 import { useNavigate } from 'react-router-dom';
@@ -16,6 +16,7 @@ const Header: React.FC<HeaderProps> = ({ variant = 'index' }) => {
   const navigate = useNavigate();
 
   const onClickAccount = () => navigate('/account');
+  const onClickDashboard = () => navigate('/dashboard');
 
   const signInButtonClassName =
     variant === 'account'
@@ -45,7 +46,16 @@ const Header: React.FC<HeaderProps> = ({ variant = 'index' }) => {
           </a>
           <HelpDialog />
           {user ? (
-            <DropdownMenu.Root>
+            <>
+              <Button
+                onClick={onClickDashboard}
+                size="sm"
+                className="h-9 px-3 bg-white hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all flex items-center gap-1"
+              >
+                <LayoutDashboard className="h-4 w-4" />
+                Dashboard
+              </Button>
+              <DropdownMenu.Root>
               <DropdownMenu.Trigger asChild>
                 <button
                   className="h-9 w-9 p-0 border-2 border-black bg-white rounded-none overflow-hidden"
@@ -95,7 +105,8 @@ const Header: React.FC<HeaderProps> = ({ variant = 'index' }) => {
                   </button>
                 </DropdownMenu.Item>
               </DropdownMenu.Content>
-            </DropdownMenu.Root>
+              </DropdownMenu.Root>
+            </>
           ) : (
             <Button onClick={() => (isLoading ? navigate('/auth/login') : signIn())} size="sm" className={signInButtonClassName}>
               Sign In
