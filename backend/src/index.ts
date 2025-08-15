@@ -48,6 +48,7 @@ app.use('*', cors({
   origin: ['https://xml.soy.run', 'http://localhost:8080'],
   allowHeaders: ['Content-Type', 'Authorization'],
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  credentials: true, // Allow cookies and credentials for WorkOS refresh tokens
 }))
 
 // Simple global JWKS cache (per-worker instance)

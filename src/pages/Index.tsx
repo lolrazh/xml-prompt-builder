@@ -1,11 +1,12 @@
 
-import React, { useEffect, useState } from 'react';
-import PromptBuilder from '../components/PromptBuilder';
-import { PlusCircle, Sparkles, ClipboardPaste, Code } from 'lucide-react';
+import React, { useEffect, useState, useRef } from 'react';
+import PromptBuilder, { PromptBuilderRef } from '../components/PromptBuilder';
+import { PlusCircle, Sparkles, ClipboardPaste, Code, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthWithCache } from '@/auth/useAuthWithCache';
 import Header from '../components/Header';
- 
+import { useLocation } from 'react-router-dom';
+
 import { useAuth } from '@workos-inc/authkit-react';
 import { ChevronDown } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
@@ -13,10 +14,14 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 const Index = () => {
   const { user } = useAuthWithCache();
   const { getAccessToken } = useAuth();
+  const location = useLocation();
+  const promptBuilderRef = useRef<PromptBuilderRef>(null);
   const [prompts, setPrompts] = useState<Array<{ id: string; name: string }>>([]);
   const [isLoadingPrompts, setIsLoadingPrompts] = useState(false);
   const [saveName, setSaveName] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [selectedPrompt, setSelectedPrompt] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     const fetchPrompts = async () => {
@@ -53,7 +58,100 @@ const Index = () => {
     };
     fetchPrompts();
   }, [user, getAccessToken]);
-  // Header handles navigation internally
+
+  // Handle prompt loading from navigation state (from Dashboard)
+  useEffect(() => {
+    const state = location.state as any;
+    if (state?.loadPrompt && promptBuilderRef.current) {
+      const { id, name, content } = state.loadPrompt;
+      
+      // Load the prompt content
+      promptBuilderRef.current.importFromText(content);
+      
+      // Set the selected prompt and save name
+      setSelectedPrompt({ id, name });
+      setSaveName(name);
+      
+      // Clear the navigation state to prevent reloading on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
+
+  const handleNewPrompt = async () => {
+    if (!promptBuilderRef.current) {
+      console.error('PromptBuilder ref is null');
+      return;
+    }
+    
+    setIsCreatingNew(true);
+    try {
+      const hasContent = promptBuilderRef.current.hasContent();
+      
+      if (hasContent) {
+        // If no name is present, scroll to name input and focus it
+        if (!saveName.trim()) {
+          const nameInput = document.querySelector('input[placeholder="prompt name"]') as HTMLInputElement;
+          if (nameInput) {
+            nameInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            nameInput.focus();
+            nameInput.select();
+          }
+          setIsCreatingNew(false);
+          return;
+        }
+        
+        // Save the current prompt with the existing name
+        const xml = promptBuilderRef.current.getCurrentXML();
+        const token = await getAccessToken();
+        if (!token) {
+          // User not authenticated, just clear without saving
+          promptBuilderRef.current.clearAll();
+          setSaveName('');
+          setSelectedPrompt(null);
+          setIsCreatingNew(false);
+          return;
+        }
+        
+        const apiBase = import.meta.env.PROD ? 'https://backend.soyrun.workers.dev' : '';
+        const res = await fetch(`${apiBase}/api/prompts`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ name: saveName.trim(), content: xml }),
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          const p = data?.prompt;
+          if (p) {
+            setPrompts((prev) => {
+              const next = [{ id: p.id, name: p.name }, ...prev];
+              const seen = new Set<string>();
+              return next.filter((x) => (seen.has(x.id) ? false : (seen.add(x.id), true)));
+            });
+          }
+        }
+      }
+      
+      // Clear the canvas and name input
+      promptBuilderRef.current.clearAll();
+      setSaveName('');
+      setSelectedPrompt(null);
+      
+    } catch (error) {
+      console.error('Error creating new prompt:', error);
+      // Even if save fails, still clear to start fresh
+      if (promptBuilderRef.current) {
+        promptBuilderRef.current.clearAll();
+        setSaveName('');
+        setSelectedPrompt(null);
+      }
+    } finally {
+      setIsCreatingNew(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#FEF7CD] dark:bg-gray-900 flex flex-col">
@@ -104,18 +202,32 @@ const Index = () => {
             </div>
           </div>
           {user && (
-            <div className="max-w-5xl mx-auto mt-4 flex justify-end">
+            <div className="mx-8 mt-4 flex justify-end gap-2">
+              <Button
+                onClick={handleNewPrompt}
+                disabled={isCreatingNew}
+                size="sm"
+                className="flex items-center gap-1 bg-[#9AE66E] py-5 text-md hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
+              >
+                <Plus className="h-4 w-4 stroke-[3]" />
+                {isCreatingNew ? 'Creating...' : 'New'}
+              </Button>
               <DropdownMenu.Root>
                 <DropdownMenu.Trigger asChild>
                   <button
                     className="flex items-center gap-2 px-3 py-2 border-2 border-black bg-white rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
                     aria-label="Open prompt library"
                   >
-                    {isLoadingPrompts ? 'Loading prompts…' : 'Your prompts'}
+                    {isLoadingPrompts 
+                      ? 'Loading prompts…' 
+                      : selectedPrompt 
+                        ? selectedPrompt.name || 'Untitled'
+                        : 'Your prompts'
+                    }
                     <ChevronDown className="h-4 w-4" />
                   </button>
                 </DropdownMenu.Trigger>
-                <DropdownMenu.Content sideOffset={6} className="min-w-[260px] max-h-[300px] overflow-y-auto bg-white border-2 border-black rounded-none p-1 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                <DropdownMenu.Content sideOffset={6} className="min-w-[260px] max-h-[300px] z-20 mr-16 overflow-y-auto bg-white border-2 border-black rounded-none p-1 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                   {prompts.length === 0 ? (
                     <div className="px-3 py-2 text-sm text-gray-500">No saved prompts</div>
                   ) : (
@@ -136,13 +248,15 @@ const Index = () => {
                               if (!res.ok) throw new Error('Failed to fetch prompt');
                               const data = await res.json();
                               const content = String(data?.prompt?.content ?? '');
-                              // import into builder by pasting to rawInput area
-                              const previewEl = document.getElementById('xml-preview');
-                              if (previewEl) {
-                                previewEl.innerText = content;
-                                const event = new Event('input', { bubbles: true });
-                                previewEl.dispatchEvent(event);
+                              
+                              // Use the proper import method that handles parsing
+                              if (promptBuilderRef.current) {
+                                promptBuilderRef.current.importFromText(content);
                               }
+                              
+                              // Set the selected prompt and update save name to show selected prompt
+                              setSelectedPrompt(p);
+                              setSaveName(p.name || 'Untitled');
                             } catch {}
                           }}
                         >
@@ -158,8 +272,8 @@ const Index = () => {
         </div>
 
         {/* Prompt Builder Component */}
-        <div className="relative">
-          <PromptBuilder />
+        <div className="relative z-10">
+          <PromptBuilder ref={promptBuilderRef} />
           {user && (
             <div className="mt-6 flex items-center gap-2 justify-end">
               <input

@@ -44,38 +44,13 @@ export function useAuthWithCache() {
     }
   }, [auth.user, auth.isLoading, cached]);
 
-  // Handle WorkOS AuthKit errors by clearing all auth-related storage
+  // Clean up cache when auth state changes
   useEffect(() => {
-    const handleAuthError = (event: any) => {
-      if (event.data?.type === 'workos-error' || 
-          (event.data?.error && event.data.error_description?.includes('refresh token'))) {
-        console.warn('WorkOS auth error detected, clearing auth storage');
-        clearAllAuthStorage();
-      }
-    };
-
-    // Also listen for console errors that might indicate auth issues
-    const originalConsoleError = console.error;
-    console.error = (...args: any[]) => {
-      const message = args.join(' ');
-      if (message.includes('Missing refresh token') || 
-          message.includes('invalid_request') ||
-          message.includes('refresh token')) {
-        console.warn('Auth error detected in console, clearing auth storage');
-        clearAllAuthStorage();
-        // Force page reload to restart auth flow cleanly
-        setTimeout(() => window.location.reload(), 100);
-      }
-      originalConsoleError.apply(console, args);
-    };
-
-    window.addEventListener('message', handleAuthError);
-    
-    return () => {
-      window.removeEventListener('message', handleAuthError);
-      console.error = originalConsoleError;
-    };
-  }, []);
+    if (!auth.isLoading && !auth.user && cached) {
+      // If we're done loading and have no user but have cached data, clear it
+      clearCachedUser();
+    }
+  }, [auth.isLoading, auth.user, cached]);
 
   const displayUser: DisplayUser | null = useMemo(() => {
     return (auth.user as any) ?? cached ?? null;
@@ -86,26 +61,14 @@ export function useAuthWithCache() {
   // Wrap signOut to clear cache immediately for snappy UI
   const wrappedSignOut = async () => {
     try {
-      clearAllAuthStorage();
+      clearCachedUser();
     } catch {}
     await auth.signOut();
   };
 
   // Pass-through signIn; cache will be filled by effect once user available
   const wrappedSignIn = async () => {
-    try {
-      await auth.signIn();
-    } catch (error: any) {
-      // Handle refresh token errors during sign in
-      if (error?.message?.includes('refresh token') || 
-          error?.error_description?.includes('refresh token')) {
-        console.warn('Refresh token error during sign in, clearing storage and retrying');
-        clearAllAuthStorage();
-        // Force page reload to restart auth flow
-        window.location.reload();
-      }
-      throw error;
-    }
+    await auth.signIn();
   };
 
   return {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -18,7 +18,14 @@ export interface XMLElement {
   isVisible?: boolean;
 }
 
-const PromptBuilder: React.FC = () => {
+export interface PromptBuilderRef {
+  clearAll: () => void;
+  hasContent: () => boolean;
+  getCurrentXML: () => string;
+  importFromText: (text: string) => void;
+}
+
+const PromptBuilder = forwardRef<PromptBuilderRef>((props, ref) => {
   const STORAGE_KEYS = {
     elements: 'xmlPromptBuilder.elements',
     rawInput: 'xmlPromptBuilder.rawInput',
@@ -576,6 +583,22 @@ const PromptBuilder: React.FC = () => {
     }
   };
 
+  const hasContent = () => {
+    return elements.length > 0 || rawInput.length > 0;
+  };
+
+  const getCurrentXML = () => {
+    const previewEl = document.getElementById('xml-preview');
+    return previewEl ? previewEl.textContent || '' : '';
+  };
+
+  useImperativeHandle(ref, () => ({
+    clearAll,
+    hasContent,
+    getCurrentXML,
+    importFromText
+  }));
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card className="p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.5)] border-2 border-black dark:border-gray-100 rounded-none bg-[#F2FCE2] dark:bg-gray-800">
@@ -703,6 +726,8 @@ const PromptBuilder: React.FC = () => {
       </Card>
     </div>
   );
-};
+});
+
+PromptBuilder.displayName = 'PromptBuilder';
 
 export default PromptBuilder;

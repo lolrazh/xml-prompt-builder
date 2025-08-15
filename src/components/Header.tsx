@@ -31,7 +31,7 @@ const Header: React.FC<HeaderProps> = ({ variant = 'index' }) => {
   return (
     <header className="border-b-2 border-black dark:border-gray-700 bg-[#9AE66E] dark:bg-gray-800 shadow-[0_4px_0px_0px_rgba(0,0,0,0.1)]">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-        <h1 className="text-3xl font-black text-black dark:text-white flex items-center gap-2">
+        <h1 className="text-3xl font-black text-black dark:text-white flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
           <Code className="h-7 w-7 stroke-[3]" />
           <span>XML Prompt Builder</span>
         </h1>

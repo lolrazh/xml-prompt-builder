@@ -20,35 +20,42 @@ const App = () => {
   const apiHostname = import.meta.env.VITE_WORKOS_API_HOSTNAME as string | undefined;
   const devModeEnv = import.meta.env.VITE_WORKOS_DEV_MODE as unknown as string | undefined;
   const devMode = devModeEnv ? devModeEnv === 'true' : !import.meta.env.PROD;
+  const redirectUri = import.meta.env.VITE_WORKOS_REDIRECT_URI as string | undefined;
 
   if (!clientId) {
     // eslint-disable-next-line no-console
     console.warn("VITE_WORKOS_CLIENT_ID is not set. AuthKit will not be functional until configured.");
   }
 
-  // Add global error handler for unhandled auth errors
-  useEffect(() => {
-    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      const error = event.reason;
-      if (error?.message?.includes('Missing refresh token') || 
-          error?.error_description?.includes('Missing refresh token') ||
-          (error?.response?.status === 400 && error?.response?.data?.error === 'invalid_request')) {
-        console.warn('Unhandled auth error, clearing storage:', error);
-        clearAllAuthStorage();
-        event.preventDefault(); // Prevent the error from showing in console
-        setTimeout(() => window.location.reload(), 100);
-      }
-    };
+  // AuthKit refresh failure handler
+  const handleRefreshFailure = ({ signIn }: { signIn: any }) => {
+    console.warn('AuthKit refresh failed, redirecting to sign in');
+    // Clear any cached user data
+    clearAllAuthStorage();
+    // Redirect to sign in
+    signIn();
+  };
 
-    window.addEventListener('unhandledrejection', handleUnhandledRejection);
-    return () => window.removeEventListener('unhandledrejection', handleUnhandledRejection);
-  }, []);
+  // Handle successful refresh
+  const handleRefresh = (response: any) => {
+    console.log('AuthKit token refreshed successfully');
+  };
+
+  // Check before auto refresh to ensure it's appropriate
+  const handleBeforeAutoRefresh = () => {
+    // Only allow auto refresh if user is actively using the app
+    return document.visibilityState === 'visible';
+  };
 
   return (
     <AuthKitProvider
       clientId={clientId ?? ""}
       devMode={devMode}
-      redirectUri={import.meta.env.PROD ? "https://xml.soy.run/login" : "http://localhost:8080/login"}
+      redirectUri={redirectUri ?? (import.meta.env.PROD ? "https://xml.soy.run/login" : "http://localhost:8080/login")}
+      refreshBufferInterval={60} // Refresh 60 seconds before expiration
+      onRefreshFailure={handleRefreshFailure}
+      onRefresh={handleRefresh}
+      onBeforeAutoRefresh={handleBeforeAutoRefresh}
       {...(apiHostname ? { apiHostname } : {})}
     >
       <QueryClientProvider client={queryClient}>
