@@ -27,7 +27,7 @@ const Index = () => {
       if (!user) return;
       setIsLoadingPrompts(true);
       try {
-        const apiBase = import.meta.env.PROD ? 'https://backend.soyrun.workers.dev' : '';
+        const apiBase = import.meta.env.PROD ? 'https://api.xml.soy.run' : '';
         const res = await authenticatedFetch(`${apiBase}/api/prompts`);
         if (!res.ok) throw new Error('Failed to load prompts');
         const data = await res.json();
@@ -90,7 +90,7 @@ const Index = () => {
         // Save the current prompt with the existing name
         const xml = promptBuilderRef.current.getCurrentXML();
         
-        const apiBase = import.meta.env.PROD ? 'https://backend.soyrun.workers.dev' : '';
+        const apiBase = import.meta.env.PROD ? 'https://api.xml.soy.run' : '';
         const res = await authenticatedFetch(`${apiBase}/api/prompts`, {
           method: 'POST',
           body: JSON.stringify({ name: saveName.trim(), content: xml }),
@@ -211,7 +211,7 @@ const Index = () => {
                           className="w-full text-left px-3 py-2 hover:bg-[#9AE66E]/30 font-mono text-sm"
                           onClick={async () => {
                             try {
-                              const apiBase = import.meta.env.PROD ? 'https://backend.soyrun.workers.dev' : '';
+                              const apiBase = import.meta.env.PROD ? 'https://api.xml.soy.run' : '';
                               const res = await authenticatedFetch(`${apiBase}/api/prompts/${p.id}`);
                               if (!res.ok) throw new Error('Failed to fetch prompt');
                               const data = await res.json();
@@ -259,7 +259,7 @@ const Index = () => {
                   try {
                     const previewEl = document.getElementById('xml-preview');
                     const xml = previewEl ? previewEl.textContent || '' : '';
-                    const apiBase = import.meta.env.PROD ? 'https://backend.soyrun.workers.dev' : '';
+                    const apiBase = import.meta.env.PROD ? 'https://api.xml.soy.run' : '';
                     const res = await authenticatedFetch(`${apiBase}/api/prompts`, {
                       method: 'POST',
                       body: JSON.stringify({ name: saveName.trim(), content: xml }),

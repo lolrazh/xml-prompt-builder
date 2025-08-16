@@ -1,12 +1,13 @@
 import { createAuthClient } from "better-auth/react"
 
 export const authClient = createAuthClient({
-  baseURL: import.meta.env.DEV ? "http://localhost:8787" : "https://backend.soyrun.workers.dev",
+  baseURL: import.meta.env.DEV ? "http://localhost:8787" : "https://api.xml.soy.run",
   credentials: "include",
   session: {
     storeHeaders: true,
     cookieName: "better-auth.session",
-    storage: "localStorage" // Use localStorage for cross-domain support
+    storage: "localStorage", // Use localStorage for cross-domain support
+    fetchOnWindowFocus: true, // Refetch session when window gains focus
   },
 })
 

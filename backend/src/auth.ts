@@ -11,8 +11,8 @@ export function createAuth(env: any) {
       provider: "sqlite",
       schema,
     }),
-    baseURL: env.NODE_ENV === 'production' ? 'https://backend.soyrun.workers.dev' : 'http://localhost:8787',
-    trustedOrigins: ['http://localhost:8080', 'https://xml.soy.run', 'https://backend.soyrun.workers.dev'],
+    baseURL: env.NODE_ENV === 'production' ? 'https://api.xml.soy.run' : 'http://localhost:8787',
+    trustedOrigins: ['http://localhost:8080', 'https://xml.soy.run', 'https://api.xml.soy.run'],
     emailAndPassword: {
       enabled: false, // Only OAuth for now
     },
@@ -20,12 +20,12 @@ export function createAuth(env: any) {
       google: {
         clientId: env.GOOGLE_CLIENT_ID || "",
         clientSecret: env.GOOGLE_CLIENT_SECRET || "",
-        redirect_uri: env.NODE_ENV === 'production' ? "https://backend.soyrun.workers.dev/api/auth/callback/google" : "http://localhost:8787/api/auth/callback/google",
+        redirect_uri: env.NODE_ENV === 'production' ? "https://api.xml.soy.run/api/auth/callback/google" : "http://localhost:8787/api/auth/callback/google",
       },
       github: {
         clientId: env.GITHUB_CLIENT_ID || "",
         clientSecret: env.GITHUB_CLIENT_SECRET || "",
-        redirect_uri: env.NODE_ENV === 'production' ? "https://backend.soyrun.workers.dev/api/auth/callback/github" : "http://localhost:8787/api/auth/callback/github",
+        redirect_uri: env.NODE_ENV === 'production' ? "https://api.xml.soy.run/api/auth/callback/github" : "http://localhost:8787/api/auth/callback/github",
       },
     },
     session: {
@@ -43,6 +43,7 @@ export function createAuth(env: any) {
           httpOnly: false, // Allow client-side access for cross-domain
           secure: env.NODE_ENV === 'production',
           sameSite: env.NODE_ENV === 'production' ? "none" : "lax", // Allow cross-site in production
+          domain: env.NODE_ENV === 'production' ? ".xml.soy.run" : undefined, // Share cookies across xml.soy.run subdomains
         }
       }
     },

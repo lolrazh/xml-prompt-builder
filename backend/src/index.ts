@@ -23,7 +23,7 @@ const app = new Hono<{ Bindings: Env; Variables: Variables }>()
 // Configure CORS to allow requests from the frontend
 app.use('*', cors({
   origin: (origin) => {
-    const allowedOrigins = ['https://xml.soy.run', 'http://localhost:8080']
+    const allowedOrigins = ['https://xml.soy.run', 'https://api.xml.soy.run', 'http://localhost:8080']
     return allowedOrigins.includes(origin || '') ? origin : null
   },
   allowHeaders: ['Content-Type', 'Authorization', 'Cookie'],
@@ -39,10 +39,38 @@ app.use('*', async (c, next) => {
   await next()
 })
 
+// Production-ready request logging (less verbose)
+app.use('*', async (c, next) => {
+  if (c.req.path.includes('/api/auth/')) {
+    console.log('Auth request:', c.req.method, c.req.path)
+  }
+  await next()
+})
+
 // Better Auth API routes - handle all auth endpoints
-app.on(["POST", "GET"], '/api/auth/*', async (c) => {
+app.all('/api/auth/*', async (c) => {
   const auth = c.get('auth')
-  return auth.handler(c.req.raw)
+  
+  if (!auth) {
+    console.error('Auth object not found in context')
+    return c.json({ error: 'Auth not initialized' }, 500)
+  }
+  
+  try {
+    const response = await auth.handler(c.req.raw)
+    
+    // Debug session data for get-session calls
+    if (c.req.path.includes('get-session')) {
+      const responseText = await response.clone().text()
+      console.log('Session response:', responseText)
+      console.log('Request headers:', Object.fromEntries(c.req.raw.headers.entries()))
+    }
+    
+    return response
+  } catch (error) {
+    console.error('Auth handler error:', error.message)
+    return c.json({ error: 'Auth handler failed' }, 500)
+  }
 })
 
 // Auth middleware for protected routes
