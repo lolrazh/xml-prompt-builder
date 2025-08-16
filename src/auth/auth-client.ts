@@ -6,7 +6,7 @@ export const authClient = createAuthClient({
   session: {
     storeHeaders: true,
     cookieName: "better-auth.session",
-    storage: "cookie"
+    storage: "localStorage" // Use localStorage for cross-domain support
   },
 })
 

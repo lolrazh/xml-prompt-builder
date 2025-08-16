@@ -36,6 +36,16 @@ export function createAuth(env: any) {
         maxAge: 60 * 60 * 24 * 7, // 7 days
       },
     },
+    cookies: {
+      sessionToken: {
+        name: "better-auth.session",
+        options: {
+          httpOnly: false, // Allow client-side access for cross-domain
+          secure: env.NODE_ENV === 'production',
+          sameSite: env.NODE_ENV === 'production' ? "none" : "lax", // Allow cross-site in production
+        }
+      }
+    },
     advanced: {
       database: {
         generateId: () => crypto.randomUUID(),
