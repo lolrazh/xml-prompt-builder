@@ -3,17 +3,16 @@ import React, { useEffect, useState, useRef } from 'react';
 import PromptBuilder, { PromptBuilderRef } from '../components/PromptBuilder';
 import { PlusCircle, Sparkles, ClipboardPaste, Code, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useAuthWithCache } from '@/auth/useAuthWithCache';
+import { useBetterAuth } from '@/auth/useBetterAuth';
+import { useBetterAuthenticatedFetch } from '@/hooks/useBetterAuthenticatedFetch';
 import Header from '../components/Header';
 import { useLocation } from 'react-router-dom';
-
-import { useAuth } from '@workos-inc/authkit-react';
 import { ChevronDown } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 
 const Index = () => {
-  const { user } = useAuthWithCache();
-  const { getAccessToken } = useAuth();
+  const { user } = useBetterAuth();
+  const authenticatedFetch = useBetterAuthenticatedFetch();
   const location = useLocation();
   const promptBuilderRef = useRef<PromptBuilderRef>(null);
   const [prompts, setPrompts] = useState<Array<{ id: string; name: string }>>([]);
@@ -28,20 +27,8 @@ const Index = () => {
       if (!user) return;
       setIsLoadingPrompts(true);
       try {
-        const token = await getAccessToken();
-        if (!token) {
-          setPrompts([]);
-          return;
-        }
         const apiBase = import.meta.env.PROD ? 'https://backend.soyrun.workers.dev' : '';
-        const res = await fetch(`${apiBase}/api/prompts`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.status === 401) {
-          // Token invalid, user needs to sign in again
-          setPrompts([]);
-          return;
-        }
+        const res = await authenticatedFetch(`${apiBase}/api/prompts`);
         if (!res.ok) throw new Error('Failed to load prompts');
         const data = await res.json();
         const list = Array.isArray(data)
@@ -57,7 +44,7 @@ const Index = () => {
       }
     };
     fetchPrompts();
-  }, [user, getAccessToken]);
+  }, [user, authenticatedFetch]);
 
   // Handle prompt loading from navigation state (from Dashboard)
   useEffect(() => {
@@ -102,23 +89,10 @@ const Index = () => {
         
         // Save the current prompt with the existing name
         const xml = promptBuilderRef.current.getCurrentXML();
-        const token = await getAccessToken();
-        if (!token) {
-          // User not authenticated, just clear without saving
-          promptBuilderRef.current.clearAll();
-          setSaveName('');
-          setSelectedPrompt(null);
-          setIsCreatingNew(false);
-          return;
-        }
         
         const apiBase = import.meta.env.PROD ? 'https://backend.soyrun.workers.dev' : '';
-        const res = await fetch(`${apiBase}/api/prompts`, {
+        const res = await authenticatedFetch(`${apiBase}/api/prompts`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
           body: JSON.stringify({ name: saveName.trim(), content: xml }),
         });
         
@@ -237,14 +211,8 @@ const Index = () => {
                           className="w-full text-left px-3 py-2 hover:bg-[#9AE66E]/30 font-mono text-sm"
                           onClick={async () => {
                             try {
-                              const token = await getAccessToken();
-                              if (!token) {
-                                return;
-                              }
                               const apiBase = import.meta.env.PROD ? 'https://backend.soyrun.workers.dev' : '';
-                              const res = await fetch(`${apiBase}/api/prompts/${p.id}`, {
-                                headers: { Authorization: `Bearer ${token}` },
-                              });
+                              const res = await authenticatedFetch(`${apiBase}/api/prompts/${p.id}`);
                               if (!res.ok) throw new Error('Failed to fetch prompt');
                               const data = await res.json();
                               const content = String(data?.prompt?.content ?? '');
@@ -291,17 +259,9 @@ const Index = () => {
                   try {
                     const previewEl = document.getElementById('xml-preview');
                     const xml = previewEl ? previewEl.textContent || '' : '';
-                    const token = await getAccessToken();
-                    if (!token) {
-                      return;
-                    }
                     const apiBase = import.meta.env.PROD ? 'https://backend.soyrun.workers.dev' : '';
-                    const res = await fetch(`${apiBase}/api/prompts`, {
+                    const res = await authenticatedFetch(`${apiBase}/api/prompts`, {
                       method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${token}`,
-                      },
                       body: JSON.stringify({ name: saveName.trim(), content: xml }),
                     });
                     if (!res.ok) throw new Error('Failed to save');

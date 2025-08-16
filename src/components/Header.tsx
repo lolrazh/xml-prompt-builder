@@ -1,7 +1,7 @@
 import React from 'react';
 import { Code, Github, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useAuthWithCache } from '@/auth/useAuthWithCache';
+import { useBetterAuth } from '@/auth/useBetterAuth';
 import { useNavigate } from 'react-router-dom';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import HelpDialog from './HelpDialog';
@@ -11,7 +11,7 @@ type HeaderProps = {
 };
 
 const Header: React.FC<HeaderProps> = ({ variant = 'index' }) => {
-  const { user, signIn, signOut, isLoading, isHydratingFromCache } = useAuthWithCache();
+  const { user, signOut, isLoading, isHydratingFromCache } = useBetterAuth();
   
   const navigate = useNavigate();
 
@@ -61,10 +61,10 @@ const Header: React.FC<HeaderProps> = ({ variant = 'index' }) => {
                   className="h-9 w-9 p-0 border-2 border-black bg-white rounded-none overflow-hidden"
                   aria-label="Account"
                 >
-                  {user.profilePictureUrl ? (
+                  {user.image ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={user.profilePictureUrl}
+                      src={user.image}
                       alt="Profile"
                       className="h-full w-full object-cover"
                       referrerPolicy="no-referrer"
@@ -108,7 +108,7 @@ const Header: React.FC<HeaderProps> = ({ variant = 'index' }) => {
               </DropdownMenu.Root>
             </>
           ) : (
-            <Button onClick={() => (isLoading ? navigate('/auth/login') : signIn())} size="sm" className={signInButtonClassName}>
+            <Button onClick={() => navigate('/login')} size="sm" className={signInButtonClassName}>
               Sign In
             </Button>
           )}

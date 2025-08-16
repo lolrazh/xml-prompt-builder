@@ -1,15 +1,13 @@
 import React, { useEffect } from 'react';
-import { useAuth } from '@workos-inc/authkit-react';
+import { useNavigate } from 'react-router-dom';
 
 const AuthLogin: React.FC = () => {
-  const { signIn, user } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    if (!user) {
-      // When the provider swaps in the real signIn function, this effect will re-run and redirect
-      signIn();
-    }
-  }, [user, signIn]);
+    // Redirect to the main login page
+    navigate('/login', { replace: true });
+  }, [navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#FEF7CD] dark:bg-gray-900">

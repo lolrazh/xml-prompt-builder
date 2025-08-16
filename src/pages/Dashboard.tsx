@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Header from '@/components/Header';
-import { useAuthWithCache } from '@/auth/useAuthWithCache';
-import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
+import { useBetterAuth } from '@/auth/useBetterAuth';
+import { useBetterAuthenticatedFetch } from '@/hooks/useBetterAuthenticatedFetch';
 import { useNavigate } from 'react-router-dom';
 import { Trash } from 'lucide-react';
 
@@ -12,8 +12,8 @@ type PromptItem = {
 };
 
 const Dashboard: React.FC = () => {
-  const { user } = useAuthWithCache();
-  const authenticatedFetch = useAuthenticatedFetch();
+  const { user } = useBetterAuth();
+  const authenticatedFetch = useBetterAuthenticatedFetch();
   const navigate = useNavigate();
   const [items, setItems] = useState<PromptItem[]>([]);
   const [loading, setLoading] = useState(false);

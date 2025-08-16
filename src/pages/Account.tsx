@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAuthWithCache } from '@/auth/useAuthWithCache';
+import { useBetterAuth } from '@/auth/useBetterAuth';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
@@ -12,7 +12,7 @@ const Row: React.FC<{ label: string; value?: React.ReactNode }> = ({ label, valu
 );
 
 const Account: React.FC = () => {
-  const { user, signIn, signOut, isLoading, isHydratingFromCache } = useAuthWithCache();
+  const { user, signOut, isLoading, isHydratingFromCache } = useBetterAuth();
   const navigate = useNavigate();
   const onClickAccount = () => navigate('/account');
 
@@ -40,7 +40,7 @@ const Account: React.FC = () => {
               </div>
               <p className="mb-4">You need to sign in to view your account.</p>
               <Button
-                onClick={() => (isLoading ? navigate('/auth/login') : signIn())}
+                onClick={() => navigate('/login')}
                 className="bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
               >
                 Sign In
@@ -87,9 +87,9 @@ const Account: React.FC = () => {
 
             <div className="flex items-center gap-4 mb-6">
               <div className="h-16 w-16 border-2 border-black bg-white overflow-hidden">
-                {user?.profilePictureUrl ? (
+                {user?.image ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={user.profilePictureUrl} alt="Profile" className="h-full w-full object-cover" />
+                  <img src={user.image} alt="Profile" className="h-full w-full object-cover" />
                 ) : (
                   <div className="h-full w-full grid grid-cols-8 grid-rows-8">
                     {Array.from({ length: 64 }).map((_, i) => {
@@ -105,7 +105,7 @@ const Account: React.FC = () => {
                 )}
               </div>
               <div>
-                <div className="text-xl font-black">{user?.firstName || user?.lastName ? `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() : user?.email ?? 'User'}</div>
+                <div className="text-xl font-black">{(user?.name || user?.email) ?? 'User'}</div>
                 <div className="text-sm text-gray-600 dark:text-gray-300 font-mono">{user?.email}</div>
               </div>
             </div>

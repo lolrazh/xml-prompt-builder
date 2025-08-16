@@ -1,145 +1,65 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import jwt from '@tsndr/cloudflare-worker-jwt'
 import type { D1Database } from '@cloudflare/workers-types'
-
-type JwtHeader = {
-  alg?: string
-  kid?: string
-  typ?: string
-}
-
-type WorkOsJwtPayload = {
-  sub: string
-  iss?: string
-  aud?: string | string[]
-  email?: string
-  exp: number
-  nbf?: number
-  iat?: number
-}
-
-type Jwk = {
-  kty: string
-  kid?: string
-  use?: string
-  alg?: string
-  n?: string
-  e?: string
-  x5c?: string[]
-}
+import { createAuth, type Auth } from './auth'
 
 export type Env = {
   DB: D1Database
-  WORKOS_JWKS_URL: string
-  WORKOS_AUDIENCE: string
-  WORKOS_ISSUER: string
-  WORKOS_ME_URL?: string
+  GOOGLE_CLIENT_ID: string
+  GOOGLE_CLIENT_SECRET: string
+  GITHUB_CLIENT_ID: string
+  GITHUB_CLIENT_SECRET: string
 }
 
 type Variables = {
   userId: string
+  user: any
+  session: any
+  auth: Auth
 }
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>()
 
 // Configure CORS to allow requests from the frontend
 app.use('*', cors({
-  origin: ['https://xml.soy.run', 'http://localhost:8080'],
-  allowHeaders: ['Content-Type', 'Authorization'],
+  origin: (origin) => {
+    const allowedOrigins = ['https://xml.soy.run', 'http://localhost:8080']
+    return allowedOrigins.includes(origin || '') ? origin : null
+  },
+  allowHeaders: ['Content-Type', 'Authorization', 'Cookie'],
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  credentials: true, // Allow cookies and credentials for WorkOS refresh tokens
+  credentials: true,
 }))
 
-// Simple global JWKS cache (per-worker instance)
-const globalScope = globalThis as unknown as {
-  __JWKS_CACHE__?: { keys: Jwk[]; fetchedAt: number }
-}
-
-async function getJwks(jwksUrl: string): Promise<Jwk[]> {
-  const now = Date.now()
-  const cacheTtlMs = 10 * 60 * 1000 // 10 minutes
-  const cached = globalScope.__JWKS_CACHE__
-  if (cached && now - cached.fetchedAt < cacheTtlMs) {
-    return cached.keys
+// Initialize Better Auth with environment variables
+app.use('*', async (c, next) => {
+  if (!c.get('auth')) {
+    c.set('auth', createAuth(c.env))
   }
-  const res = await fetch(jwksUrl)
-  if (!res.ok) throw new Error('Failed to fetch JWKS')
-  const data = (await res.json()) as { keys: Jwk[] }
-  globalScope.__JWKS_CACHE__ = { keys: data.keys, fetchedAt: now }
-  return data.keys
-}
+  await next()
+})
 
-function audienceMatches(aud: string | string[] | undefined, expected: string | undefined): boolean {
-  if (!expected || expected === 'any') return true
-  // Allow undefined/null audience for WorkOS tokens that don't set aud claim
-  if (!aud) return true
-  const values = Array.isArray(aud) ? aud : [aud]
-  return values.includes(expected) || values.includes('authkit')
-}
+// Better Auth API routes - handle all auth endpoints
+app.on(["POST", "GET"], '/api/auth/*', async (c) => {
+  const auth = c.get('auth')
+  return auth.handler(c.req.raw)
+})
 
-// Auth middleware: verifies Bearer JWT, validates iss/aud, puts userId into context
-app.use('/api/*', async (c, next) => {
-  const authHeader = c.req.header('Authorization')
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+// Auth middleware for protected routes
+app.use('/api/prompts/*', async (c, next) => {
+  const auth = c.get('auth')
+  const session = await auth.api.getSession({
+    headers: c.req.raw.headers
+  })
+
+  if (!session) {
     return c.json({ error: 'Unauthorized' }, 401)
   }
 
-  const token = authHeader.slice('Bearer '.length)
-  try {
-    const decoded = jwt.decode(token) as { header: JwtHeader; payload: WorkOsJwtPayload } | undefined
-    if (!decoded || !decoded.header) {
-      return c.json({ error: 'Unauthorized' }, 401)
-    }
-
-    const kid = decoded.header.kid
-    const keys = await getJwks(c.env.WORKOS_JWKS_URL)
-    const jwk = kid ? keys.find(k => k.kid === kid) : keys[0]
-    if (!jwk) {
-      return c.json({ error: 'Unauthorized' }, 401)
-    }
-
-    if (!jwk.kid || !jwk.n || !jwk.e) {
-      return c.json({ error: 'Unauthorized' }, 401)
-    }
-
-    const publicKey = {
-      kty: 'RSA',
-      kid: jwk.kid,
-      n: jwk.n,
-      e: jwk.e,
-      alg: 'RS256',
-    } as const satisfies JsonWebKey & { kid: string }
-
-    const verified = await jwt.verify(token, publicKey as unknown as any, 'RS256' as any)
-    if (verified) {
-      const payload = (verified as any).payload as WorkOsJwtPayload
-      const issuerOk = !c.env.WORKOS_ISSUER || c.env.WORKOS_ISSUER === 'any' || (payload.iss?.startsWith(c.env.WORKOS_ISSUER) ?? false)
-      const audienceOk = audienceMatches(payload.aud, c.env.WORKOS_AUDIENCE)
-      if (issuerOk && audienceOk && payload.sub) {
-        c.set('userId', payload.sub)
-        await next()
-        return
-      }
-    }
-
-    // Fallback: call WorkOS to resolve the current user from access token (supports opaque tokens)
-    const meUrl = c.env.WORKOS_ME_URL || 'https://api.workos.com/user_management/users/me'
-    const meResp = await fetch(meUrl, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    if (meResp.ok) {
-      const me = (await meResp.json()) as { id?: string }
-      if (me?.id) {
-        c.set('userId', me.id)
-        await next()
-        return
-      }
-    }
-    return c.json({ error: 'Unauthorized' }, 401)
-  } catch (_err) {
-    return c.json({ error: 'Unauthorized' }, 401)
-  }
+  c.set('userId', session.user.id)
+  c.set('user', session.user)
+  c.set('session', session.session)
+  await next()
 })
 
 app.get('/', (c) => {

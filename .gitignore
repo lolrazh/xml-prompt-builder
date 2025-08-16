@@ -66,3 +66,5 @@ lerna-debug.log*
 .DS_Store
 
 wrangler.jsonc
+
+*.sql
