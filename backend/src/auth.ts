@@ -12,7 +12,7 @@ export function createAuth(env: any) {
       schema,
     }),
     baseURL: env.NODE_ENV === 'production' ? 'https://backend.soyrun.workers.dev' : 'http://localhost:8787',
-    trustedOrigins: ['http://localhost:8080', 'https://xml.soy.run'],
+    trustedOrigins: ['http://localhost:8080', 'https://xml.soy.run', 'https://backend.soyrun.workers.dev'],
     emailAndPassword: {
       enabled: false, // Only OAuth for now
     },
