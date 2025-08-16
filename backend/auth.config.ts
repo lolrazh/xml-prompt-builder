@@ -32,6 +32,7 @@ export default betterAuth({
     github: {
       clientId: mockEnv.GITHUB_CLIENT_ID,
       clientSecret: mockEnv.GITHUB_CLIENT_SECRET,
+      redirect_uri: "https://backend.soyrun.workers.dev/api/auth/callback/github",
     },
   },
   session: {

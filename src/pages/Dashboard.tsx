@@ -12,11 +12,16 @@ type PromptItem = {
 };
 
 const Dashboard: React.FC = () => {
-  const { user } = useBetterAuth();
+  const { user, refetch } = useBetterAuth();
   const authenticatedFetch = useBetterAuthenticatedFetch();
   const navigate = useNavigate();
   const [items, setItems] = useState<PromptItem[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Force refetch session on dashboard load (in case we just came from OAuth)
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
 
   useEffect(() => {
     const run = async () => {
@@ -80,7 +85,7 @@ const PromptCell: React.FC<{
   navigate: (path: string, options?: any) => void;
   onDeleted: (id: string) => void;
 }> = ({ id, name, navigate, onDeleted }) => {
-  const authenticatedFetch = useAuthenticatedFetch();
+  const authenticatedFetch = useBetterAuthenticatedFetch();
   const [preview, setPreview] = useState<string>('');
   const [deleting, setDeleting] = useState(false);
 

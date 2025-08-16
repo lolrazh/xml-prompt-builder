@@ -30,6 +30,17 @@ export function useBetterAuth() {
   const cached = useMemo(() => loadCachedUser(), []);
   const hasSavedOnceRef = useRef(false);
 
+  // Debug logging
+  useEffect(() => {
+    console.log('Session state:', {
+      isLoading: session.isPending,
+      hasUser: !!session.data?.user,
+      user: session.data?.user,
+      error: session.error,
+      cached: !!cached
+    });
+  }, [session.isPending, session.data?.user, session.error, cached]);
+
   // Persist authoritative user to cache once it becomes available
   useEffect(() => {
     if (session.data?.user) {
@@ -52,7 +63,19 @@ export function useBetterAuth() {
   }, [session.isPending, session.data?.user, cached]);
 
   const displayUser: DisplayUser | null = useMemo(() => {
-    return session.data?.user ?? cached ?? null;
+    const user = session.data?.user;
+    if (user) {
+      return {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        image: user.image,
+        emailVerified: user.emailVerified,
+        createdAt: user.createdAt ? user.createdAt.toString() : null,
+        updatedAt: user.updatedAt ? user.updatedAt.toString() : null,
+      };
+    }
+    return cached ?? null;
   }, [session.data?.user, cached]);
 
   const isHydratingFromCache = !session.data?.user && !!cached && session.isPending;

@@ -20,15 +20,21 @@ export function createAuth(env: any) {
       google: {
         clientId: env.GOOGLE_CLIENT_ID || "",
         clientSecret: env.GOOGLE_CLIENT_SECRET || "",
+        redirect_uri: env.NODE_ENV === 'production' ? "https://backend.soyrun.workers.dev/api/auth/callback/google" : "http://localhost:8787/api/auth/callback/google",
       },
       github: {
         clientId: env.GITHUB_CLIENT_ID || "",
         clientSecret: env.GITHUB_CLIENT_SECRET || "",
+        redirect_uri: env.NODE_ENV === 'production' ? "https://backend.soyrun.workers.dev/api/auth/callback/github" : "http://localhost:8787/api/auth/callback/github",
       },
     },
     session: {
       expiresIn: 60 * 60 * 24 * 7, // 7 days
       updateAge: 60 * 60 * 24, // 1 day
+      cookieCache: {
+        enabled: true,
+        maxAge: 60 * 60 * 24 * 7, // 7 days
+      },
     },
     advanced: {
       database: {

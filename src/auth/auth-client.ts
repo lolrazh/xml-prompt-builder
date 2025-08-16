@@ -5,6 +5,8 @@ export const authClient = createAuthClient({
   credentials: "include",
   session: {
     storeHeaders: true,
+    cookieName: "better-auth.session",
+    storage: "cookie"
   },
 })
 
