@@ -11,8 +11,8 @@ export function createAuth(env: any) {
       provider: "sqlite",
       schema,
     }),
-    baseURL: env.NODE_ENV === 'production' ? 'http://xmlbackend.soy.run' : 'http://localhost:8787',
-    trustedOrigins: ['http://localhost:8080', 'https://xml.soy.run', 'http://xmlbackend.soy.run'],
+    baseURL: env.NODE_ENV === 'production' ? 'http://xmb.soy.run' : 'http://localhost:8787',
+    trustedOrigins: ['http://localhost:8080', 'https://xml.soy.run', 'http://xmb.soy.run'],
     emailAndPassword: {
       enabled: false, // Only OAuth for now
     },
@@ -20,12 +20,12 @@ export function createAuth(env: any) {
       google: {
         clientId: env.GOOGLE_CLIENT_ID || "",
         clientSecret: env.GOOGLE_CLIENT_SECRET || "",
-        redirect_uri: env.NODE_ENV === 'production' ? "http://xmlbackend.soy.run/api/auth/callback/google" : "http://localhost:8787/api/auth/callback/google",
+        redirect_uri: env.NODE_ENV === 'production' ? "http://xmb.soy.run/api/auth/callback/google" : "http://localhost:8787/api/auth/callback/google",
       },
       github: {
         clientId: env.GITHUB_CLIENT_ID || "",
         clientSecret: env.GITHUB_CLIENT_SECRET || "",
-        redirect_uri: env.NODE_ENV === 'production' ? "http://xmlbackend.soy.run/api/auth/callback/github" : "http://localhost:8787/api/auth/callback/github",
+        redirect_uri: env.NODE_ENV === 'production' ? "http://xmb.soy.run/api/auth/callback/github" : "http://localhost:8787/api/auth/callback/github",
       },
     },
     session: {

@@ -1,7 +1,7 @@
 import { createAuthClient } from "better-auth/react"
 
 export const authClient = createAuthClient({
-  baseURL: import.meta.env.DEV ? "http://localhost:8787" : "http://xmlbackend.soy.run",
+  baseURL: import.meta.env.DEV ? "http://localhost:8787" : "http://xmb.soy.run",
   credentials: "include",
   session: {
     storeHeaders: true,

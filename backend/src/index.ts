@@ -23,7 +23,7 @@ const app = new Hono<{ Bindings: Env; Variables: Variables }>()
 // Configure CORS to allow requests from the frontend
 app.use('*', cors({
   origin: (origin) => {
-    const allowedOrigins = ['https://xml.soy.run', 'http://xmlbackend.soy.run', 'http://localhost:8080']
+    const allowedOrigins = ['https://xml.soy.run', 'http://xmb.soy.run', 'http://localhost:8080']
     return allowedOrigins.includes(origin || '') ? origin : null
   },
   allowHeaders: ['Content-Type', 'Authorization', 'Cookie'],

@@ -68,3 +68,4 @@ lerna-debug.log*
 wrangler.jsonc
 
 *.sql
+server/

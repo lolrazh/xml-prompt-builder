@@ -28,7 +28,7 @@ const Dashboard: React.FC = () => {
       if (!user) return;
       setLoading(true);
       try {
-        const apiBase = import.meta.env.PROD ? 'http://xmlbackend.soy.run' : '';
+        const apiBase = import.meta.env.PROD ? 'http://xmb.soy.run' : '';
         const res = await authenticatedFetch(`${apiBase}/api/prompts`);
         if (!res.ok) throw new Error('Failed to load prompts');
         const data = await res.json();
@@ -92,7 +92,7 @@ const PromptCell: React.FC<{
   useEffect(() => {
     const load = async () => {
       try {
-        const apiBase = import.meta.env.PROD ? 'http://xmlbackend.soy.run' : '';
+        const apiBase = import.meta.env.PROD ? 'http://xmb.soy.run' : '';
         const res = await authenticatedFetch(`${apiBase}/api/prompts/${id}`);
         if (!res.ok) return;
         const data = await res.json();
@@ -148,7 +148,7 @@ const PromptCell: React.FC<{
             e.stopPropagation(); // Prevent cell click when deleting
             setDeleting(true);
             try {
-              const apiBase = import.meta.env.PROD ? 'http://xmlbackend.soy.run' : '';
+              const apiBase = import.meta.env.PROD ? 'http://xmb.soy.run' : '';
               const res = await authenticatedFetch(`${apiBase}/api/prompts/${id}`, {
                 method: 'DELETE',
               });
