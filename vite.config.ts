@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => ({
     strictPort: true,
     proxy: {
       "/api": {
-        target: mode === 'development' ? "http://localhost:8787" : "http://xmb.soy.run",
+        target: mode === 'development' ? "http://localhost:8787" : "https://xmb.soy.run",
         changeOrigin: true,
         // Keep path as-is so the Worker sees /api/*
       },
