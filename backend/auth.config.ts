@@ -32,7 +32,7 @@ export default betterAuth({
     github: {
       clientId: mockEnv.GITHUB_CLIENT_ID,
       clientSecret: mockEnv.GITHUB_CLIENT_SECRET,
-      redirect_uri: "https://api.xml.soy.run/api/auth/callback/github",
+      redirect_uri: "https://xmlbackend.soy.run/api/auth/callback/github",
     },
   },
   session: {
