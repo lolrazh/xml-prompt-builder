@@ -1,0 +1,26 @@
+<start-here>
+  Anthropic, Google, OpenAI, all recommend using XML to structure your LLM prompts. They encourage meaningful title tags and nesting.
+</start-here>
+
+<instructions>
+  Define the task clearly and specify the desired output format.
+</instructions>
+
+<context>
+  Provide relevant background information that an AI needs to understand the task.
+</context>
+
+<examples>
+  <first-example>
+    <input>Sample input that demonstrates the expected format</input>
+    <output>Expected output showing the desired response format</output>
+  </first-example>
+</examples>
+
+<formatting>
+  Specify how you want the response structured (e.g., bullet points, numbered list, JSON, etc.).
+</formatting>
+
+<constraints>
+  List any limitations, requirements, or specific guidelines Claude should follow.
+</constraints>

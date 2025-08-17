@@ -220,7 +220,7 @@ const Index = () => {
             </div>
           </div>
           {user && (
-            <div className="mx-8 mt-4 flex justify-end gap-2">
+            <div className="mx-1 mt-4 flex justify-end gap-2">
               {selectedPrompt && (
                 <Button
                   onClick={handleBranch}
@@ -243,7 +243,7 @@ const Index = () => {
               <DropdownMenu.Root>
                 <DropdownMenu.Trigger asChild>
                   <button
-                    className="flex items-center gap-2 px-3 py-2 border-2 border-black bg-white rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-[13px]"
+                    className="flex items-center min-w-[150px] text-right justify-end gap-2 px-3 py-2 border-2 border-black bg-white rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-[13px]"
                     aria-label="Open prompt library"
                   >
                     {isLoadingPrompts 
@@ -255,7 +255,7 @@ const Index = () => {
                     <ChevronDown className="h-4 w-4" />
                   </button>
                 </DropdownMenu.Trigger>
-                <DropdownMenu.Content sideOffset={6} className="min-w-[260px] max-h-[300px] z-20 mr-16 overflow-y-auto bg-white border-2 border-black rounded-none p-1 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                <DropdownMenu.Content sideOffset={6} className="min-w-[260px] max-h-[300px] z-20 mr-5 md:mr-8 overflow-y-auto bg-white border-2 border-black rounded-none p-1 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                   {prompts.length === 0 ? (
                     <div className="px-3 py-2 text-sm text-gray-500">No saved prompts</div>
                   ) : (
@@ -302,7 +302,7 @@ const Index = () => {
                 value={saveName}
                 onChange={(e) => setSaveName(e.target.value)}
                 placeholder="prompt name"
-                className="px-2 py-1 border-2 border-black bg-white rounded-none font-mono text-[13px]"
+                className="px-2 py-1 border-2 border-black bg-white rounded-none font-mono text-md"
               />
               <Button
                 size="sm"

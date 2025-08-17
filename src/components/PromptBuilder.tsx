@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } f
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Trash, Plus, Copy, MoveVertical, Upload, Download } from 'lucide-react';
+import { Trash, Plus, Copy, MoveVertical, Upload, Download, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn, estimateTokenCount, formatTokenCount } from '@/lib/utils';
 import ElementEditor from './ElementEditor';
@@ -39,6 +39,18 @@ const PromptBuilder = forwardRef<PromptBuilderRef>((props, ref) => {
   const [isDragActive, setIsDragActive] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  const loadTemplate = async (): Promise<string> => {
+    try {
+      const response = await fetch('/example.xml');
+      if (response.ok) {
+        return await response.text();
+      }
+    } catch (error) {
+      console.warn('Failed to load template:', error);
+    }
+    return '';
+  };
+
   const importFromText = async (text: string) => {
     try {
       const parsed = looseParseXML(text);
@@ -49,6 +61,16 @@ const PromptBuilder = forwardRef<PromptBuilderRef>((props, ref) => {
     } catch (err: any) {
       setRawInput(text);
       toast.error(err?.message || 'Parse error');
+    }
+  };
+
+  const loadTemplateManual = async () => {
+    const template = await loadTemplate();
+    if (template) {
+      await importFromText(template);
+      toast.success('Template loaded!');
+    } else {
+      toast.error('Failed to load template');
     }
   };
 
@@ -138,35 +160,44 @@ const PromptBuilder = forwardRef<PromptBuilderRef>((props, ref) => {
 
   // Hydrate from localStorage on first load
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.elements);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        const hydrate = (nodes: any[]): XMLElement[] => {
-          if (!Array.isArray(nodes)) return [];
-          const mapNode = (n: any): XMLElement => ({
-            id: typeof n?.id === 'string' ? n.id : `element-${Date.now()}-${Math.random()}`,
-            tagName: typeof n?.tagName === 'string' ? n.tagName : 'element',
-            content: typeof n?.content === 'string' ? n.content : '',
-            children: Array.isArray(n?.children) ? n.children.map(mapNode) : [],
-            collapsed: typeof n?.collapsed === 'boolean' ? n.collapsed : undefined,
-            isVisible: typeof n?.isVisible === 'boolean' ? n.isVisible : true,
-          });
-          return nodes.map(mapNode);
-        };
-        const hydrated = hydrate(parsed);
-        if (hydrated.length > 0) {
-          setElements(hydrated);
-          return; // prefer restored structure over raw input
+    const initialize = async () => {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEYS.elements);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          const hydrate = (nodes: any[]): XMLElement[] => {
+            if (!Array.isArray(nodes)) return [];
+            const mapNode = (n: any): XMLElement => ({
+              id: typeof n?.id === 'string' ? n.id : `element-${Date.now()}-${Math.random()}`,
+              tagName: typeof n?.tagName === 'string' ? n.tagName : 'element',
+              content: typeof n?.content === 'string' ? n.content : '',
+              children: Array.isArray(n?.children) ? n.children.map(mapNode) : [],
+              collapsed: typeof n?.collapsed === 'boolean' ? n.collapsed : undefined,
+              isVisible: typeof n?.isVisible === 'boolean' ? n.isVisible : true,
+            });
+            return nodes.map(mapNode);
+          };
+          const hydrated = hydrate(parsed);
+          if (hydrated.length > 0) {
+            setElements(hydrated);
+            return; // prefer restored structure over raw input
+          }
         }
+        
+        const savedRaw = localStorage.getItem(STORAGE_KEYS.rawInput);
+        if (savedRaw) {
+          setRawInput(savedRaw);
+          return;
+        }
+
+        // If no saved data exists, load the template
+        await initializeWithTemplate();
+      } catch {
+        // ignore restore errors
       }
-      const savedRaw = localStorage.getItem(STORAGE_KEYS.rawInput);
-      if (savedRaw) {
-        setRawInput(savedRaw);
-      }
-    } catch {
-      // ignore restore errors
-    }
+    };
+    
+    initialize();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -580,6 +611,18 @@ const PromptBuilder = forwardRef<PromptBuilderRef>((props, ref) => {
       localStorage.removeItem(STORAGE_KEYS.rawInput);
     } catch {
       // ignore storage errors
+    }
+  };
+
+  const initializeWithTemplate = async () => {
+    const template = await loadTemplate();
+    if (template) {
+      try {
+        const parsed = looseParseXML(template);
+        setElements(parsed);
+      } catch (err: any) {
+        setRawInput(template);
+      }
     }
   };
 

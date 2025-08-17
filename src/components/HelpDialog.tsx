@@ -11,9 +11,9 @@ const HelpDialog: React.FC = () => {
         <Button 
           variant="ghost" 
           size="icon" 
-          className="h-9 w-9 rounded-none hover:bg-[#9AE66E]/30"
+          className="h-10 w-10 rounded-none hover:bg-[#9AE66E]/30"
         >
-          <HelpCircle className="h-7 w-7 stroke-[3]" />
+          <HelpCircle className="h-10 w-10 stroke-[3]" />
         </Button>
       </DialogTrigger>
       <DialogContent className="border-2 border-black rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-[#F2FCE2]">

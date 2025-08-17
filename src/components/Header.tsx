@@ -33,7 +33,7 @@ const Header: React.FC<HeaderProps> = ({ variant = 'index' }) => {
       <div className="container mx-auto px-4 py-3">
         {/* Main navbar */}
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-black text-black dark:text-white flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
+          <h1 className="text-2xl md:text-3xl font-black text-black dark:text-white flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
             <Code className="h-7 w-7 stroke-[3]" />
             <span>XML Prompt Builder</span>
           </h1>
@@ -135,7 +135,7 @@ const Header: React.FC<HeaderProps> = ({ variant = 'index' }) => {
                 <Button
                   onClick={onClickDashboard}
                   size="sm"
-                  className="h-12 px-3 bg-white hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all flex items-center gap-1"
+                  className="h-10 px-3 bg-white hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all flex items-center gap-1"
                 >
                   <LayoutDashboard className="h-4 w-4" />
                   Dashboard
@@ -143,7 +143,7 @@ const Header: React.FC<HeaderProps> = ({ variant = 'index' }) => {
                 <DropdownMenu.Root>
                 <DropdownMenu.Trigger asChild>
                   <button
-                    className="h-12 w-12 p-0 border-2 border-black bg-white rounded-none overflow-hidden"
+                    className="h-10 w-10 p-0 border-2 border-black bg-white rounded-none overflow-hidden"
                     aria-label="Account"
                   >
                     {user.image ? (
