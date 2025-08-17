@@ -183,7 +183,12 @@ const Index = () => {
           </h2>
           <p className="text-xl max-w-3xl mx-auto text-gray-700 dark:text-gray-300 mb-10">
             Create structured XML prompts for AI systems without the hassle of manual formatting.
-            Perfect for prompt engineers and AI enthusiasts.
+            Perfect for prompt engineers and AI enthusiasts.  
+            {!user ? (
+              <span className='mt-2'> <a href="/login" className='text-gray-700 dark:text-gray-800 hover:underline'>Login</a> to save your prompts, and start building your prompt library.</span>
+            ) : (
+              ""
+            )}
           </p>
           
           <div className={`grid grid-cols-1 md:grid-cols-4 gap-6 max-w-5xl mx-auto ${user ? 'hidden' : ''}`}>
