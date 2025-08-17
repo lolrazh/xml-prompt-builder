@@ -33,14 +33,14 @@ const DropIndicatorLine: React.FC<DropIndicatorLineProps> = ({
     };
 
     // Calculate horizontal positioning with depth-based indentation
-    const indentOffset = depth * 24; // 1.5rem = 24px
+    const indentOffset = depth * 24; // 1.5rem = 24px depth indentation
     const leftBleed = 4; // 4px bleed on the left (Atlassian pattern)
     
     return {
       ...baseStyles,
-      left: position.x - leftBleed + indentOffset,
+      left: position.x + indentOffset - leftBleed, // Start from the depth level
       top: position.y - 1, // Center the 2px line
-      width: position.width - indentOffset + leftBleed,
+      width: position.width - indentOffset + leftBleed, // Adjust width accordingly
       // Add visual cues for different drop types
       opacity: type === 'child' ? 0.8 : 1,
       transform: type === 'child' ? 'scaleY(1.5)' : 'scaleY(1)',
