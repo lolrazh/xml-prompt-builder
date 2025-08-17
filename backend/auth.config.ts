@@ -20,7 +20,7 @@ export default betterAuth({
     provider: "sqlite",
   }),
   baseURL: "http://localhost:8787",
-  trustedOrigins: ['http://localhost:8080', 'https://xml.soy.run'],
+  trustedOrigins: ['http://localhost:8080', 'https://xml.soy.run', 'https://xml-prompt-builder-import-patch.vercel.app'],
   emailAndPassword: {
     enabled: false, // Only OAuth for now
   },

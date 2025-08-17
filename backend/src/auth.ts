@@ -12,7 +12,7 @@ export function createAuth(env: any) {
       schema,
     }),
     baseURL: env.NODE_ENV === 'production' ? 'https://xmb.soy.run' : 'http://localhost:8787',
-    trustedOrigins: ['http://localhost:8080', 'https://xml.soy.run', 'https://xmb.soy.run'],
+    trustedOrigins: ['http://localhost:8080', 'https://xml.soy.run', 'https://xmb.soy.run', 'https://xml-prompt-builder-import-patch.vercel.app'],
     emailAndPassword: {
       enabled: false, // Only OAuth for now
     },
