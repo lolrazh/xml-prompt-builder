@@ -4,6 +4,7 @@ import { useBetterAuth } from '@/auth/useBetterAuth';
 import { useBetterAuthenticatedFetch } from '@/hooks/useBetterAuthenticatedFetch';
 import { useNavigate } from 'react-router-dom';
 import { Trash } from 'lucide-react';
+import { toast } from 'sonner';
 
 type PromptItem = {
   id: string;
@@ -137,7 +138,7 @@ const PromptCell: React.FC<{
         {preview}
       </div>
       <div className="mt-2 flex items-center justify-between">
-        <div className="font-bold text-black dark:text-white truncate" title={name || 'Untitled'}>
+        <div className="font-bold text-black dark:text-white truncate text-[13px]" title={name || 'Untitled'}>
           {name || 'Untitled'}
         </div>
         <button
@@ -154,8 +155,10 @@ const PromptCell: React.FC<{
               });
               if (!res.ok) throw new Error('Failed to delete');
               onDeleted(id);
+              toast.success('Prompt deleted successfully!');
             } catch (error: any) {
               console.warn('Failed to delete prompt:', error);
+              toast.error('Failed to delete prompt');
             }
             finally { setDeleting(false); }
           }}

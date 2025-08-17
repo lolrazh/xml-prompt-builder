@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import PromptBuilder, { PromptBuilderRef } from '../components/PromptBuilder';
-import { PlusCircle, Sparkles, ClipboardPaste, Code, Plus } from 'lucide-react';
+import { PlusCircle, Sparkles, ClipboardPaste, Code, Plus, GitBranch } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useBetterAuth } from '@/auth/useBetterAuth';
 import { useBetterAuthenticatedFetch } from '@/hooks/useBetterAuthenticatedFetch';
@@ -9,6 +9,7 @@ import Header from '../components/Header';
 import { useLocation } from 'react-router-dom';
 import { ChevronDown } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import { toast } from 'sonner';
 
 const Index = () => {
   const { user } = useBetterAuth();
@@ -100,12 +101,17 @@ const Index = () => {
           const data = await res.json();
           const p = data?.prompt;
           if (p) {
+            const newPrompt = { id: p.id, name: p.name };
             setPrompts((prev) => {
-              const next = [{ id: p.id, name: p.name }, ...prev];
+              const next = [newPrompt, ...prev];
               const seen = new Set<string>();
               return next.filter((x) => (seen.has(x.id) ? false : (seen.add(x.id), true)));
             });
+            setSelectedPrompt(newPrompt);
+            toast.success(`Prompt "${p.name}" saved successfully!`);
           }
+        } else {
+          toast.error('Failed to save prompt');
         }
       }
       
@@ -124,6 +130,44 @@ const Index = () => {
       }
     } finally {
       setIsCreatingNew(false);
+    }
+  };
+
+  const handleBranch = async () => {
+    if (!selectedPrompt || !promptBuilderRef.current) {
+      return;
+    }
+
+    try {
+      const xml = promptBuilderRef.current.getCurrentXML();
+      const branchName = `${selectedPrompt.name} branch`;
+      
+      const apiBase = import.meta.env.PROD ? 'https://xmb.soy.run' : '';
+      const res = await authenticatedFetch(`${apiBase}/api/prompts`, {
+        method: 'POST',
+        body: JSON.stringify({ name: branchName, content: xml }),
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        const p = data?.prompt;
+        if (p) {
+          const newPrompt = { id: p.id, name: p.name };
+          setPrompts((prev) => {
+            const next = [newPrompt, ...prev];
+            const seen = new Set<string>();
+            return next.filter((x) => (seen.has(x.id) ? false : (seen.add(x.id), true)));
+          });
+          setSelectedPrompt(newPrompt);
+          setSaveName(p.name);
+          toast.success(`Branched prompt "${p.name}" created successfully!`);
+        }
+      } else {
+        toast.error('Failed to create branch');
+      }
+    } catch (error) {
+      console.error('Error creating branch:', error);
+      toast.error('Failed to create branch');
     }
   };
 
@@ -177,6 +221,16 @@ const Index = () => {
           </div>
           {user && (
             <div className="mx-8 mt-4 flex justify-end gap-2">
+              {selectedPrompt && (
+                <Button
+                  onClick={handleBranch}
+                  size="sm"
+                  className="flex items-center gap-1 bg-[#FFE766] py-5 text-md hover:bg-[#E6D147] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
+                >
+                  <GitBranch className="h-4 w-4 stroke-[3]" />
+                  Branch
+                </Button>
+              )}
               <Button
                 onClick={handleNewPrompt}
                 disabled={isCreatingNew}
@@ -189,7 +243,7 @@ const Index = () => {
               <DropdownMenu.Root>
                 <DropdownMenu.Trigger asChild>
                   <button
-                    className="flex items-center gap-2 px-3 py-2 border-2 border-black bg-white rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                    className="flex items-center gap-2 px-3 py-2 border-2 border-black bg-white rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-[13px]"
                     aria-label="Open prompt library"
                   >
                     {isLoadingPrompts 
@@ -208,7 +262,7 @@ const Index = () => {
                     prompts.map((p) => (
                       <DropdownMenu.Item key={p.id} asChild>
                         <button
-                          className="w-full text-left px-3 py-2 hover:bg-[#9AE66E]/30 font-mono text-sm"
+                          className="w-full text-left px-3 py-2 hover:bg-[#9AE66E]/30 font-mono text-[13px]"
                           onClick={async () => {
                             try {
                               const apiBase = import.meta.env.PROD ? 'https://xmb.soy.run' : '';
@@ -248,7 +302,7 @@ const Index = () => {
                 value={saveName}
                 onChange={(e) => setSaveName(e.target.value)}
                 placeholder="prompt name"
-                className="px-2 py-1 border-2 border-black bg-white rounded-none font-mono text-md"
+                className="px-2 py-1 border-2 border-black bg-white rounded-none font-mono text-[13px]"
               />
               <Button
                 size="sm"
@@ -268,14 +322,18 @@ const Index = () => {
                     const data = await res.json();
                     const p = data?.prompt;
                     if (p) {
+                      const newPrompt = { id: p.id, name: p.name };
                       setPrompts((prev) => {
-                        const next = [{ id: p.id, name: p.name }, ...prev];
+                        const next = [newPrompt, ...prev];
                         const seen = new Set<string>();
                         return next.filter((x) => (seen.has(x.id) ? false : (seen.add(x.id), true)));
                       });
+                      setSelectedPrompt(newPrompt);
+                      toast.success(`Prompt "${p.name}" saved successfully!`);
                     }
-                  } catch {}
-                  finally { setIsSaving(false); }
+                  } catch {
+                    toast.error('Failed to save prompt');
+                  } finally { setIsSaving(false); }
                 }}
               >
                 Save

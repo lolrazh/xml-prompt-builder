@@ -602,9 +602,9 @@ const PromptBuilder = forwardRef<PromptBuilderRef>((props, ref) => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card className="p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.5)] border-2 border-black dark:border-gray-100 rounded-none bg-[#F2FCE2] dark:bg-gray-800">
-        <h2 className="text-xl font-bold mb-4 flex justify-between items-center border-b-2 border-black dark:border-gray-100 pb-2">
+        <h2 className="text-xl font-bold mb-4 flex flex-col md:flex-row md:justify-between md:items-center gap-2 border-b-2 border-black dark:border-gray-100 pb-2">
           <span className="font-black">Structure Builder</span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 mb-2">
             <input
               ref={fileInputRef}
               type="file"
@@ -678,9 +678,9 @@ const PromptBuilder = forwardRef<PromptBuilderRef>((props, ref) => {
       </Card>
       
       <Card className="p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.5)] border-2 border-black dark:border-gray-100 rounded-none bg-[#F2FCE2] dark:bg-gray-800">
-        <h2 className="text-xl font-bold mb-4 flex justify-between items-center border-b-2 border-black dark:border-gray-100 pb-2">
+        <h2 className="text-xl font-bold mb-4 flex flex-col md:flex-row md:justify-between md:items-center gap-2 border-b-2 border-black dark:border-gray-100 pb-2">
           <span className="font-black">XML Preview</span>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 mb-2">
             <span className="text-sm font-mono font-bold text-gray-600 dark:text-gray-400 pr-1">
               ~{formatTokenCount(tokenCount)}
             </span>
