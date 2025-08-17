@@ -4,6 +4,7 @@ import { XMLElement } from './PromptBuilder';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronRight, Plus, Trash, ArrowUp, ArrowDown, Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import DragHandle from './DragHandle';
 
 interface ElementTreeProps {
   elements: XMLElement[];
@@ -40,6 +41,8 @@ const ElementTree: React.FC<ElementTreeProps> = ({
               selectedElementId === element.id ? "bg-[#9AE66E]/50" : "hover:bg-gray-100 dark:hover:bg-gray-800"
             )}
           >
+            <DragHandle className="flex-shrink-0" />
+            
             {element.children.length > 0 && (
               <Button
                 variant="ghost"
