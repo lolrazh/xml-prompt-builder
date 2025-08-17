@@ -203,42 +203,34 @@ const PromptBuilder = forwardRef<PromptBuilderRef>((props, ref) => {
 
   // Generate XML output whenever elements change
   useEffect(() => {
-    const generateXML = (elements: XMLElement[], indentLevel = 0): string => {
+    const generateXML = (elements: XMLElement[], indentLevel = 0, hasParent = false): string => {
       return elements
         .filter(element => element.isVisible !== false)
         .map(element => {
         const indent = '  '.repeat(indentLevel);
         const hasChildren = element.children && element.children.length > 0;
-        const hasContent = element.content.trim().length > 0;
+        const cleanContent = element.content.trim();
+        const hasContent = cleanContent.length > 0;
         
-        // Start with opening tag
-        let xml = `${indent}<${element.tagName}>`;
-        
-        // Add content with proper indentation if exists
-        if (hasContent) {
-          xml += `\n${indent}  ${element.content}\n${indent}`;
+        if (hasContent && !hasChildren) {
+          // Simple element with content only
+          return `${indent}<${element.tagName}>\n${indent}  ${cleanContent}\n${indent}</${element.tagName}>${hasParent ? '' : '\n'}`;
+        } else if (hasChildren && !hasContent) {
+          // Element with children only
+          const childrenXml = generateXML(element.children, indentLevel + 1, true);
+          return `${indent}<${element.tagName}>\n${childrenXml}\n${indent}</${element.tagName}>${hasParent ? '' : '\n'}`;
+        } else if (hasContent && hasChildren) {
+          // Element with both content and children
+          const childrenXml = generateXML(element.children, indentLevel + 1, true);
+          return `${indent}<${element.tagName}>\n${indent}  ${cleanContent}\n${childrenXml}\n${indent}</${element.tagName}>${hasParent ? '' : '\n'}`;
+        } else {
+          // Empty element
+          return `${indent}<${element.tagName}></${element.tagName}>`;
         }
-        
-        // Add children
-        if (hasChildren) {
-          const childrenXml = generateXML(element.children, indentLevel + 1);
-          if (hasContent) {
-            xml += childrenXml;
-          } else {
-            xml += `\n${childrenXml}\n${indent}`;
-          }
-        } else if (!hasContent) {
-          // Always ensure the closing tag is on a new line
-          xml += "\n" + indent;
-        }
-        
-        // Add closing tag
-        xml += `</${element.tagName}>`;
-        return xml;
       }).join('\n');
     };
 
-    const xml = generateXML(elements);
+    const xml = generateXML(elements, 0, false);
     setOutputXML(xml);
     setTokenCount(estimateTokenCount(xml));
     // Persist elements
@@ -316,6 +308,19 @@ const PromptBuilder = forwardRef<PromptBuilderRef>((props, ref) => {
       }
     }
   }, [elements, selectedElement]);
+
+  // Handle Ctrl+S for export
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        exportToFile();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [elements, rawInput]);
 
   // Persist raw input when builder is empty
   useEffect(() => {

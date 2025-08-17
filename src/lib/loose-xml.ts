@@ -121,7 +121,7 @@ export function looseParseXML(xml: string): XMLElement[] {
     return {
       id: `element-${crypto.randomUUID()}`,
       tagName: tag,
-      content: children.length ? "" : segs.join(""),
+      content: children.length ? "" : segs.join("").trim(),
       children,
       isVisible: true,
     };
