@@ -14,6 +14,7 @@ import {
   DragOverlay,
   DragStartEvent,
   closestCenter,
+  pointerWithin,
   PointerSensor,
   useSensor,
   useSensors,
@@ -545,16 +546,109 @@ const PromptBuilder: React.FC = () => {
       return;
     }
 
-    // For now, just handle root level reordering
-    const oldIndex = elements.findIndex(el => el.id === active.id);
-    const newIndex = elements.findIndex(el => el.id === over.id);
-    
-    if (oldIndex !== -1 && newIndex !== -1) {
-      setElements(arrayMove(elements, oldIndex, newIndex));
+    const overId = over.id as string;
+    const activeId = active.id as string;
+
+    // Check if we're dropping onto a drop zone (between elements) or onto an element
+    if (overId.includes('dropzone-')) {
+      // Extract the target element id and position from dropzone id
+      const [, position, targetId] = overId.split('-');
+      handleDropBetweenElements(activeId, targetId, position);
+    } else {
+      // Dropping onto an element - make it a child
+      handleDropOntoElement(activeId, overId);
     }
     
     setActiveId(null);
     setDraggedElement(null);
+  };
+
+  const handleDropBetweenElements = (draggedId: string, targetId: string, position: string) => {
+    setElements(prev => {
+      // Find and extract the dragged element
+      let draggedElement: XMLElement | null = null;
+      
+      const removeElement = (elements: XMLElement[]): XMLElement[] => {
+        return elements.filter(el => {
+          if (el.id === draggedId) {
+            draggedElement = el;
+            return false;
+          }
+          if (el.children.length > 0) {
+            el.children = removeElement(el.children);
+          }
+          return true;
+        });
+      };
+      
+      const insertElement = (elements: XMLElement[]): XMLElement[] => {
+        const result: XMLElement[] = [];
+        for (const el of elements) {
+          if (position === 'before' && el.id === targetId) {
+            result.push(draggedElement!);
+          }
+          result.push({
+            ...el,
+            children: el.children.length > 0 ? insertElement(el.children) : el.children
+          });
+          if (position === 'after' && el.id === targetId) {
+            result.push(draggedElement!);
+          }
+        }
+        return result;
+      };
+      
+      let newElements = removeElement([...prev]);
+      if (draggedElement) {
+        newElements = insertElement(newElements);
+      }
+      return newElements;
+    });
+  };
+
+  const handleDropOntoElement = (draggedId: string, targetId: string) => {
+    setElements(prev => {
+      // Find and extract the dragged element
+      let draggedElement: XMLElement | null = null;
+      
+      const removeElement = (elements: XMLElement[]): XMLElement[] => {
+        return elements.filter(el => {
+          if (el.id === draggedId) {
+            draggedElement = el;
+            return false;
+          }
+          if (el.children.length > 0) {
+            el.children = removeElement(el.children);
+          }
+          return true;
+        });
+      };
+      
+      const addAsChild = (elements: XMLElement[]): XMLElement[] => {
+        return elements.map(el => {
+          if (el.id === targetId) {
+            return {
+              ...el,
+              children: [...el.children, draggedElement!],
+              collapsed: false
+            };
+          }
+          if (el.children.length > 0) {
+            return {
+              ...el,
+              children: addAsChild(el.children)
+            };
+          }
+          return el;
+        });
+      };
+      
+      let newElements = removeElement([...prev]);
+      if (draggedElement) {
+        newElements = addAsChild(newElements);
+      }
+      return newElements;
+    });
   };
 
   return (
@@ -606,7 +700,7 @@ const PromptBuilder: React.FC = () => {
           ) : (
             <DndContext
               sensors={sensors}
-              collisionDetection={closestCenter}
+              collisionDetection={pointerWithin}
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
             >
@@ -628,8 +722,13 @@ const PromptBuilder: React.FC = () => {
               </SortableContext>
               <DragOverlay>
                 {draggedElement && (
-                  <div className="p-2 bg-[#9AE66E] border-2 border-black rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] opacity-90">
-                    <span className="font-mono font-bold">&lt;{draggedElement.tagName}&gt;</span>
+                  <div className="flex items-center gap-2 p-2 bg-gray-100 dark:bg-gray-800 rounded cursor-pointer opacity-90">
+                    <div className="w-3 h-4 flex-shrink-0" />
+                    <div className="flex items-center gap-1 font-bold">
+                      <span className="text-gray-600 dark:text-gray-400 font-black">&lt;</span>
+                      <span className="font-mono">{draggedElement.tagName}</span>
+                      <span className="text-gray-600 dark:text-gray-400 font-black">&gt;</span>
+                    </div>
                   </div>
                 )}
               </DragOverlay>

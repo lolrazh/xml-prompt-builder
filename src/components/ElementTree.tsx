@@ -5,8 +5,10 @@ import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronRight, Plus, Trash, ArrowUp, ArrowDown, Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import DragHandle from './DragHandle';
-import { useSortable } from '@dnd-kit/sortable';
+import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
+import DropZone from './DropZone';
 
 interface ElementTreeProps {
   elements: XMLElement[];
@@ -53,28 +55,40 @@ const SortableElement: React.FC<SortableElementProps> = ({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: element.id });
+  } = useSortable({ 
+    id: element.id,
+    animateLayoutChanges: () => false,
+  });
+
+  const { isOver: isOverElement, setNodeRef: setDropRef } = useDroppable({
+    id: element.id,
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
+    transition: isDragging ? 'none' : transition,
   };
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={cn(
-        "space-y-2",
-        isDragging && "opacity-50"
-      )}
-    >
-      <div 
+    <>
+      <DropZone id={`dropzone-before-${element.id}`} className="h-1" />
+      <div
+        ref={(node) => {
+          setNodeRef(node);
+          setDropRef(node);
+        }}
+        style={style}
         className={cn(
-          "flex items-center gap-2 p-2 rounded cursor-pointer group",
-          selectedElementId === element.id ? "bg-[#9AE66E]/50" : "hover:bg-gray-100 dark:hover:bg-gray-800"
+          "space-y-2",
+          isDragging && "opacity-50"
         )}
       >
+        <div 
+          className={cn(
+            "flex items-center gap-2 p-2 rounded cursor-pointer group transition-colors",
+            selectedElementId === element.id ? "bg-[#9AE66E]/50" : "hover:bg-gray-100 dark:hover:bg-gray-800"
+          )}
+        >
         <DragHandle 
           className="flex-shrink-0" 
           {...attributes}
@@ -175,20 +189,27 @@ const SortableElement: React.FC<SortableElementProps> = ({
       </div>
       
       {element.children.length > 0 && !element.collapsed && (
-        <ElementTree
-          elements={element.children}
-          onElementSelect={onElementSelect}
-          onAddChild={onAddChild}
-          onDelete={onDelete}
-          onToggleCollapse={onToggleCollapse}
-          onToggleVisibility={onToggleVisibility}
-          onMoveUp={onMoveUp}
-          onMoveDown={onMoveDown}
-          selectedElementId={selectedElementId}
-          depth={depth + 1}
-        />
+        <SortableContext 
+          items={element.children.map(child => child.id)} 
+          strategy={verticalListSortingStrategy}
+        >
+          <ElementTree
+            elements={element.children}
+            onElementSelect={onElementSelect}
+            onAddChild={onAddChild}
+            onDelete={onDelete}
+            onToggleCollapse={onToggleCollapse}
+            onToggleVisibility={onToggleVisibility}
+            onMoveUp={onMoveUp}
+            onMoveDown={onMoveDown}
+            selectedElementId={selectedElementId}
+            depth={depth + 1}
+          />
+        </SortableContext>
       )}
-    </div>
+      </div>
+      <DropZone id={`dropzone-after-${element.id}`} className="h-1" />
+    </>
   );
 };
 
