@@ -8,6 +8,21 @@ import { cn, estimateTokenCount, formatTokenCount } from '@/lib/utils';
 import ElementEditor from './ElementEditor';
 import ElementTree from './ElementTree';
 import { looseParseXML } from '@/lib/loose-xml';
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable';
 
 export interface XMLElement {
   id: string;
@@ -25,7 +40,17 @@ const PromptBuilder: React.FC = () => {
   const [tokenCount, setTokenCount] = useState<number>(0);
   const [rawInput, setRawInput] = useState<string>('');
   const [isDragActive, setIsDragActive] = useState<boolean>(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [draggedElement, setDraggedElement] = useState<XMLElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
 
   const importFromText = async (text: string) => {
     try {
@@ -491,6 +516,47 @@ const PromptBuilder: React.FC = () => {
     setRawInput('');
   };
 
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    setActiveId(active.id as string);
+    
+    // Find the element being dragged
+    const findElement = (elements: XMLElement[]): XMLElement | null => {
+      for (const element of elements) {
+        if (element.id === active.id) return element;
+        if (element.children.length > 0) {
+          const found = findElement(element.children);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+    
+    const element = findElement(elements);
+    setDraggedElement(element);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (!over || active.id === over.id) {
+      setActiveId(null);
+      setDraggedElement(null);
+      return;
+    }
+
+    // For now, just handle root level reordering
+    const oldIndex = elements.findIndex(el => el.id === active.id);
+    const newIndex = elements.findIndex(el => el.id === over.id);
+    
+    if (oldIndex !== -1 && newIndex !== -1) {
+      setElements(arrayMove(elements, oldIndex, newIndex));
+    }
+    
+    setActiveId(null);
+    setDraggedElement(null);
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card className="p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.5)] border-2 border-black dark:border-gray-100 rounded-none bg-[#F2FCE2] dark:bg-gray-800">
@@ -538,17 +604,36 @@ const PromptBuilder: React.FC = () => {
               <p>No elements yet. Add an element to begin building your prompt.</p>
             </div>
           ) : (
-            <ElementTree 
-              elements={elements} 
-              onElementSelect={setSelectedElement}
-              onAddChild={addChildElement}
-              onDelete={deleteElement}
-              onToggleCollapse={toggleCollapseElement}
-              onToggleVisibility={toggleVisibilityElement} // Add this line
-              onMoveUp={moveElementUp}
-              onMoveDown={moveElementDown}
-              selectedElementId={selectedElement?.id}
-            />
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext 
+                items={elements.map(el => el.id)} 
+                strategy={verticalListSortingStrategy}
+              >
+                <ElementTree 
+                  elements={elements} 
+                  onElementSelect={setSelectedElement}
+                  onAddChild={addChildElement}
+                  onDelete={deleteElement}
+                  onToggleCollapse={toggleCollapseElement}
+                  onToggleVisibility={toggleVisibilityElement}
+                  onMoveUp={moveElementUp}
+                  onMoveDown={moveElementDown}
+                  selectedElementId={selectedElement?.id}
+                />
+              </SortableContext>
+              <DragOverlay>
+                {draggedElement && (
+                  <div className="p-2 bg-[#9AE66E] border-2 border-black rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] opacity-90">
+                    <span className="font-mono font-bold">&lt;{draggedElement.tagName}&gt;</span>
+                  </div>
+                )}
+              </DragOverlay>
+            </DndContext>
           )}
         </div>
 
