@@ -71,12 +71,6 @@ const XMLTreeGhost: React.FC<XMLTreeGhostProps> = ({
         )}
       </div>
 
-      {/* Depth indicator - small badge */}
-      <div className="ml-auto flex-shrink-0">
-        <div className="text-xs bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded text-gray-600 dark:text-gray-400 font-mono">
-          depth {element.depth}
-        </div>
-      </div>
       
     </div>
   );

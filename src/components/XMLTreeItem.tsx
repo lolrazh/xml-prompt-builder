@@ -132,12 +132,6 @@ const XMLTreeItem: React.FC<XMLTreeItemProps> = ({
           </span>
         )}
 
-        {/* Depth badge for debugging (remove in production) */}
-        {process.env.NODE_ENV === 'development' && (
-          <span className="text-xs bg-gray-200 dark:bg-gray-700 px-1 rounded text-gray-600 dark:text-gray-400 ml-auto">
-            d{element.depth}
-          </span>
-        )}
       </div>
       
       {/* Action buttons - appear on hover */}

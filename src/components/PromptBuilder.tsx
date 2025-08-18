@@ -6,24 +6,8 @@ import { Trash, Plus, Copy, MoveVertical, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn, estimateTokenCount, formatTokenCount } from '@/lib/utils';
 import ElementEditor from './ElementEditor';
-import ElementTree from './ElementTree';
+import XMLTreeContainer from './XMLTreeContainer';
 import { looseParseXML } from '@/lib/loose-xml';
-import {
-  DndContext,
-  DragEndEvent,
-  DragOverlay,
-  DragStartEvent,
-  closestCenter,
-  pointerWithin,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-  arrayMove,
-} from '@dnd-kit/sortable';
 
 export interface XMLElement {
   id: string;
@@ -41,17 +25,8 @@ const PromptBuilder: React.FC = () => {
   const [tokenCount, setTokenCount] = useState<number>(0);
   const [rawInput, setRawInput] = useState<string>('');
   const [isDragActive, setIsDragActive] = useState<boolean>(false);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [draggedElement, setDraggedElement] = useState<XMLElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    })
-  );
 
   const importFromText = async (text: string) => {
     try {
@@ -517,139 +492,6 @@ const PromptBuilder: React.FC = () => {
     setRawInput('');
   };
 
-  const handleDragStart = (event: DragStartEvent) => {
-    const { active } = event;
-    setActiveId(active.id as string);
-    
-    // Find the element being dragged
-    const findElement = (elements: XMLElement[]): XMLElement | null => {
-      for (const element of elements) {
-        if (element.id === active.id) return element;
-        if (element.children.length > 0) {
-          const found = findElement(element.children);
-          if (found) return found;
-        }
-      }
-      return null;
-    };
-    
-    const element = findElement(elements);
-    setDraggedElement(element);
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    
-    if (!over || active.id === over.id) {
-      setActiveId(null);
-      setDraggedElement(null);
-      return;
-    }
-
-    const overId = over.id as string;
-    const activeId = active.id as string;
-
-    // Check if we're dropping onto a drop zone (between elements) or onto an element
-    if (overId.includes('dropzone-')) {
-      // Extract the target element id and position from dropzone id
-      const [, position, targetId] = overId.split('-');
-      handleDropBetweenElements(activeId, targetId, position);
-    } else {
-      // Dropping onto an element - make it a child
-      handleDropOntoElement(activeId, overId);
-    }
-    
-    setActiveId(null);
-    setDraggedElement(null);
-  };
-
-  const handleDropBetweenElements = (draggedId: string, targetId: string, position: string) => {
-    setElements(prev => {
-      // Find and extract the dragged element
-      let draggedElement: XMLElement | null = null;
-      
-      const removeElement = (elements: XMLElement[]): XMLElement[] => {
-        return elements.filter(el => {
-          if (el.id === draggedId) {
-            draggedElement = el;
-            return false;
-          }
-          if (el.children.length > 0) {
-            el.children = removeElement(el.children);
-          }
-          return true;
-        });
-      };
-      
-      const insertElement = (elements: XMLElement[]): XMLElement[] => {
-        const result: XMLElement[] = [];
-        for (const el of elements) {
-          if (position === 'before' && el.id === targetId) {
-            result.push(draggedElement!);
-          }
-          result.push({
-            ...el,
-            children: el.children.length > 0 ? insertElement(el.children) : el.children
-          });
-          if (position === 'after' && el.id === targetId) {
-            result.push(draggedElement!);
-          }
-        }
-        return result;
-      };
-      
-      let newElements = removeElement([...prev]);
-      if (draggedElement) {
-        newElements = insertElement(newElements);
-      }
-      return newElements;
-    });
-  };
-
-  const handleDropOntoElement = (draggedId: string, targetId: string) => {
-    setElements(prev => {
-      // Find and extract the dragged element
-      let draggedElement: XMLElement | null = null;
-      
-      const removeElement = (elements: XMLElement[]): XMLElement[] => {
-        return elements.filter(el => {
-          if (el.id === draggedId) {
-            draggedElement = el;
-            return false;
-          }
-          if (el.children.length > 0) {
-            el.children = removeElement(el.children);
-          }
-          return true;
-        });
-      };
-      
-      const addAsChild = (elements: XMLElement[]): XMLElement[] => {
-        return elements.map(el => {
-          if (el.id === targetId) {
-            return {
-              ...el,
-              children: [...el.children, draggedElement!],
-              collapsed: false
-            };
-          }
-          if (el.children.length > 0) {
-            return {
-              ...el,
-              children: addAsChild(el.children)
-            };
-          }
-          return el;
-        });
-      };
-      
-      let newElements = removeElement([...prev]);
-      if (draggedElement) {
-        newElements = addAsChild(newElements);
-      }
-      return newElements;
-    });
-  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -698,41 +540,18 @@ const PromptBuilder: React.FC = () => {
               <p>No elements yet. Add an element to begin building your prompt.</p>
             </div>
           ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={pointerWithin}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext 
-                items={elements.map(el => el.id)} 
-                strategy={verticalListSortingStrategy}
-              >
-                <ElementTree 
-                  elements={elements} 
-                  onElementSelect={setSelectedElement}
-                  onAddChild={addChildElement}
-                  onDelete={deleteElement}
-                  onToggleCollapse={toggleCollapseElement}
-                  onToggleVisibility={toggleVisibilityElement}
-                  onMoveUp={moveElementUp}
-                  onMoveDown={moveElementDown}
-                  selectedElementId={selectedElement?.id}
-                />
-              </SortableContext>
-              <DragOverlay>
-                {draggedElement && (
-                  <div className="flex items-center gap-2 p-2 bg-gray-100 dark:bg-gray-800 rounded cursor-pointer opacity-90">
-                    <div className="w-3 h-4 flex-shrink-0" />
-                    <div className="flex items-center gap-1 font-bold">
-                      <span className="text-gray-600 dark:text-gray-400 font-black">&lt;</span>
-                      <span className="font-mono">{draggedElement.tagName}</span>
-                      <span className="text-gray-600 dark:text-gray-400 font-black">&gt;</span>
-                    </div>
-                  </div>
-                )}
-              </DragOverlay>
-            </DndContext>
+            <XMLTreeContainer 
+              elements={elements} 
+              onElementsChange={setElements}
+              onElementSelect={setSelectedElement}
+              onAddChild={addChildElement}
+              onDelete={deleteElement}
+              onToggleCollapse={toggleCollapseElement}
+              onToggleVisibility={toggleVisibilityElement}
+              onMoveUp={moveElementUp}
+              onMoveDown={moveElementDown}
+              selectedElementId={selectedElement?.id}
+            />
           )}
         </div>
 

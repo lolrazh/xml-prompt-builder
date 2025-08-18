@@ -5,6 +5,7 @@ interface DragHandleProps {
   className?: string;
   onMouseDown?: (e: React.MouseEvent) => void;
   onTouchStart?: (e: React.TouchEvent) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any; // For spreading dnd-kit attributes and listeners
 }
 
