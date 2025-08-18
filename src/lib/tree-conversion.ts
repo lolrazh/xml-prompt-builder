@@ -14,6 +14,7 @@ export interface FlatXMLElement {
   order: number; // Position within parent's children
   collapsed?: boolean;
   isVisible?: boolean;
+  hasChildren?: boolean; // Whether this element currently has children
 }
 
 /**
@@ -40,13 +41,14 @@ export function treeToFlat(elements: XMLElement[]): FlatXMLElement[] {
         ancestorIds: [...ancestorIds], // Copy array for immutability
         order,
         collapsed: item.collapsed,
-        isVisible: item.isVisible
+        isVisible: item.isVisible,
+        hasChildren: item.children && item.children.length > 0
       };
       
       result.push(flatElement);
       
-      // Recursively process children with updated context
-      if (item.children && item.children.length > 0) {
+      // Recursively process children ONLY if element is not collapsed
+      if (item.children && item.children.length > 0 && !item.collapsed) {
         traverse(
           item.children, 
           depth + 1, 

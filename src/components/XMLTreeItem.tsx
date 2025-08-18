@@ -62,8 +62,8 @@ const XMLTreeItem: React.FC<XMLTreeItemProps> = ({
     opacity: isDragging ? 0.4 : 1, // Only the dragged element becomes transparent
   };
 
-  // Check if element has children (from the context of flat structure)
-  const hasCollapsibleChildren = element.collapsed !== undefined;
+  // Check if element currently has children
+  const hasCollapsibleChildren = element.hasChildren;
 
   return (
     <div
