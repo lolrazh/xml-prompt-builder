@@ -79,15 +79,6 @@ export function useXMLTreeDragDrop(
     const relativeY = (clientY - rect.top) / rect.height;
     const flatElement = flatElements.find(el => el.id === targetId);
     
-    console.log('🎯 calculateDropPosition:', { 
-      targetId, 
-      clientY, 
-      clientX, 
-      relativeY: relativeY.toFixed(2),
-      rectTop: rect.top,
-      rectBottom: rect.bottom,
-      elementDepth: flatElement?.depth 
-    });
     
     if (!flatElement) return null;
     
@@ -252,14 +243,6 @@ export function useXMLTreeDragDrop(
     const currentY = event.activatorEvent.clientY + (event.delta?.y || 0);
     const currentX = event.activatorEvent.clientX + (event.delta?.x || 0);
     
-    console.log('📍 Current cursor calc:', {
-      activatorY: event.activatorEvent.clientY,
-      deltaY: event.delta?.y,
-      currentY,
-      activatorX: event.activatorEvent.clientX,
-      deltaX: event.delta?.x,
-      currentX
-    });
     
     // Calculate and set drop indicator
     const indicator = calculateDropPosition(
