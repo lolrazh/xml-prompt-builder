@@ -14,6 +14,7 @@ interface XMLTreeItemProps {
   element: FlatXMLElement;
   isSelected: boolean;
   isDragging: boolean;
+  isAnyDragActive: boolean;
   isValidDropTarget: boolean;
   onElementClick: (element: FlatXMLElement) => void;
   onAddChild: (elementId: string) => void;
@@ -29,6 +30,7 @@ const XMLTreeItem: React.FC<XMLTreeItemProps> = ({
   element,
   isSelected,
   isDragging,
+  isAnyDragActive,
   isValidDropTarget,
   onElementClick,
   onAddChild,
@@ -52,12 +54,12 @@ const XMLTreeItem: React.FC<XMLTreeItemProps> = ({
     animateLayoutChanges: () => false,
   });
 
-  // Only apply transform to the dragged element (for ghost positioning)
+  // STATIONARY BEHAVIOR: No transforms for ANY element during drag operations
   const itemStyle = {
     ...style,
-    transform: isDragging ? 'none' : CSS.Transform.toString(transform),
-    transition: isDragging ? 'none' : transition,
-    opacity: isDragging ? 0.4 : 1,
+    transform: isAnyDragActive ? 'none' : CSS.Transform.toString(transform),
+    transition: isAnyDragActive ? 'none' : transition,
+    opacity: isDragging ? 0.4 : 1, // Only the dragged element becomes transparent
   };
 
   // Check if element has children (from the context of flat structure)

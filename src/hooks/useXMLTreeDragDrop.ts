@@ -274,16 +274,41 @@ function moveElementInFlat(
   newPosition: { newDepth: number; newParentId: string | null; newAncestorIds: string[] }
 ): FlatXMLElement[] {
   
-  // Find the dragged element and target element
+  // Find the dragged element and target element IN THE ORIGINAL ARRAY
   const draggedIndex = flatElements.findIndex(el => el.id === draggedId);
-  const targetIndex = flatElements.findIndex(el => el.id === targetId);
+  const originalTargetIndex = flatElements.findIndex(el => el.id === targetId);
   
-  if (draggedIndex === -1 || targetIndex === -1) {
+  if (draggedIndex === -1 || originalTargetIndex === -1) {
     throw new Error('Element not found in flat array');
   }
   
   const draggedElement = flatElements[draggedIndex];
-  const targetElement = flatElements[targetIndex];
+  
+  // CALCULATE INSERTION INDEX BEFORE REMOVING ANYTHING
+  let insertIndex: number;
+  switch (dropType) {
+    case 'before':
+      insertIndex = originalTargetIndex;
+      break;
+    case 'after':
+      insertIndex = originalTargetIndex + 1;
+      break;
+    case 'child':
+      // Insert after the last child of target element
+      insertIndex = findLastChildIndex(flatElements, targetId) + 1;
+      break;
+    default:
+      throw new Error(`Invalid drop type: ${dropType}`);
+  }
+  
+  // If we're moving an element down (to a higher index), we need to account
+  // for the fact that removing it will shift the insertion point
+  if (draggedIndex < insertIndex) {
+    // Get count of elements we're about to remove (dragged + descendants)
+    const draggedDescendants = getAllDescendantsInFlat(flatElements, draggedId);
+    const elementsToRemoveCount = 1 + draggedDescendants.length;
+    insertIndex -= elementsToRemoveCount;
+  }
   
   // Create a copy of the flat array
   const result = [...flatElements];
@@ -292,7 +317,7 @@ function moveElementInFlat(
   const draggedDescendants = getAllDescendantsInFlat(result, draggedId);
   const elementsToMove = [draggedElement, ...draggedDescendants];
   
-  // Remove all elements to move from their current positions
+  // Remove all elements to move from their current positions (reverse order to maintain indices)
   elementsToMove.reverse().forEach(element => {
     const index = result.findIndex(el => el.id === element.id);
     if (index !== -1) {
@@ -313,26 +338,7 @@ function moveElementInFlat(
         ).filter(Boolean)
   }));
   
-  // Find the insertion point
-  let insertIndex: number;
-  const updatedTargetIndex = result.findIndex(el => el.id === targetId);
-  
-  switch (dropType) {
-    case 'before':
-      insertIndex = updatedTargetIndex;
-      break;
-    case 'after':
-      insertIndex = updatedTargetIndex + 1;
-      break;
-    case 'child':
-      // Insert after the last child of target element
-      insertIndex = findLastChildIndex(result, targetId) + 1;
-      break;
-    default:
-      throw new Error(`Invalid drop type: ${dropType}`);
-  }
-  
-  // Insert the moved elements at the new position
+  // Insert the moved elements at the calculated position
   result.splice(insertIndex, 0, ...updatedElementsToMove);
   
   // Recalculate order values for all elements

@@ -98,6 +98,7 @@ const XMLTreeContainer: React.FC<XMLTreeContainerProps> = ({
                 element={flatElement}
                 isSelected={selectedElementId === flatElement.id}
                 isDragging={activeId === flatElement.id}
+                isAnyDragActive={isDragging}
                 isValidDropTarget={isValidDropTarget(flatElement.id)}
                 onElementClick={handleElementClick}
                 onAddChild={onAddChild}
