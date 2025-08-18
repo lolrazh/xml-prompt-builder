@@ -77,6 +77,7 @@ const XMLTreeContainer: React.FC<XMLTreeContainerProps> = ({
     onElementSelect(xmlElement);
   };
 
+
   return (
     <DndContext
       sensors={sensors}

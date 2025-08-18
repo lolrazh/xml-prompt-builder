@@ -71,6 +71,7 @@ export function useXMLTreeDragDrop(
    */
   const calculateDropPosition = useCallback((
     clientY: number,
+    clientX: number,
     targetElement: Element,
     targetId: string
   ): DropIndicatorState | null => {
@@ -78,25 +79,84 @@ export function useXMLTreeDragDrop(
     const relativeY = (clientY - rect.top) / rect.height;
     const flatElement = flatElements.find(el => el.id === targetId);
     
+    console.log('🎯 calculateDropPosition:', { 
+      targetId, 
+      clientY, 
+      clientX, 
+      relativeY: relativeY.toFixed(2),
+      rectTop: rect.top,
+      rectBottom: rect.bottom,
+      elementDepth: flatElement?.depth 
+    });
+    
     if (!flatElement) return null;
     
-    // Determine drop type based on cursor position within element
+    // Check for edge cases - top/bottom of container
+    const elementIndex = flatElements.findIndex(el => el.id === targetId);
+    const isFirstElement = elementIndex === 0;
+    const isLastElement = elementIndex === flatElements.length - 1;
+    
+    // ISSUE 1 FIX: Top edge of first element = drop at absolute top
+    if (isFirstElement && relativeY < 0.1) {
+      return {
+        type: 'before',
+        targetId,
+        depth: 0, // Always root level for container edges
+        position: {
+          x: rect.left,
+          y: rect.top - 2, // Slightly above the element
+          width: rect.width
+        }
+      };
+    }
+    
+    // ISSUE 1 FIX: Bottom edge of last element = drop at absolute bottom  
+    if (isLastElement && relativeY > 0.9) {
+      return {
+        type: 'after',
+        targetId,
+        depth: 0, // Always root level for container edges
+        position: {
+          x: rect.left,
+          y: rect.bottom + 2, // Slightly below the element
+          width: rect.width
+        }
+      };
+    }
+    
+    // ISSUE 2 FIX: Horizontal cursor detection for hierarchy choice
+    // Calculate which depth level the cursor is hovering over
+    const baseIndent = 12; // Base left padding
+    const indentPerLevel = 24; // 24px per depth level  
+    const relativeX = clientX - rect.left - baseIndent;
+    const hoveredDepth = Math.max(0, Math.floor(relativeX / indentPerLevel));
+    
+    // Regular drop detection
     let type: 'before' | 'after' | 'child';
     let depth = flatElement.depth;
     
     if (relativeY < 0.25) {
       // Top quarter - drop before element
       type = 'before';
+      // ISSUE 2: Allow depth choice when dropping between elements
+      depth = Math.min(hoveredDepth, flatElement.depth);
     } else if (relativeY > 0.75) {
       // Bottom quarter - drop after element  
       type = 'after';
+      // ISSUE 2: Allow depth choice when dropping between elements
+      depth = Math.min(hoveredDepth, flatElement.depth);
     } else {
-      // Middle area - drop as child
-      type = 'child';
-      depth = flatElement.depth + 1;
+      // Middle area - drop as child or same level based on X position
+      if (hoveredDepth > flatElement.depth) {
+        type = 'child';
+        depth = flatElement.depth + 1;
+      } else {
+        type = 'before'; // Default to before if not clearly child
+        depth = Math.min(hoveredDepth, flatElement.depth);
+      }
     }
     
-    return {
+    const result = {
       type,
       targetId,
       depth,
@@ -108,6 +168,9 @@ export function useXMLTreeDragDrop(
         width: rect.width
       }
     };
+    
+    console.log('✅ Drop position result:', result);
+    return result;
   }, [flatElements]);
   
   /**
@@ -151,6 +214,14 @@ export function useXMLTreeDragDrop(
   const handleDragOver = useCallback((event: DragOverEvent) => {
     const { active, over } = event;
     
+    console.log('🚨 DragOverEvent inspection:', {
+      hasActivatorEvent: !!event.activatorEvent,
+      activatorCoords: event.activatorEvent ? { x: event.activatorEvent.clientX, y: event.activatorEvent.clientY } : null,
+      hasDelta: !!event.delta,
+      delta: event.delta,
+      allEventKeys: Object.keys(event)
+    });
+    
     if (!over || !activeId) {
       setDropIndicator(null);
       return;
@@ -177,9 +248,23 @@ export function useXMLTreeDragDrop(
       return;
     }
     
+    // CRITICAL FIX: Calculate current cursor position, not initial drag position!
+    const currentY = event.activatorEvent.clientY + (event.delta?.y || 0);
+    const currentX = event.activatorEvent.clientX + (event.delta?.x || 0);
+    
+    console.log('📍 Current cursor calc:', {
+      activatorY: event.activatorEvent.clientY,
+      deltaY: event.delta?.y,
+      currentY,
+      activatorX: event.activatorEvent.clientX,
+      deltaX: event.delta?.x,
+      currentX
+    });
+    
     // Calculate and set drop indicator
     const indicator = calculateDropPosition(
-      event.activatorEvent.clientY, 
+      currentY,
+      currentX, 
       targetElement, 
       targetId
     );
@@ -218,6 +303,24 @@ export function useXMLTreeDragDrop(
     try {
       // Calculate new position
       const newPosition = calculateNewPosition(flatElements, draggedId, targetId, finalDropType);
+      
+      // ISSUE 2 FIX: Override depth if drop indicator has custom depth
+      if (dropIndicator?.depth !== undefined) {
+        newPosition.newDepth = dropIndicator.depth;
+        
+        // Update parent relationships for custom depth
+        if (newPosition.newDepth === 0) {
+          newPosition.newParentId = null;
+          newPosition.newAncestorIds = [];
+        } else {
+          // Find the appropriate parent at the new depth level
+          const targetElement = flatElements.find(el => el.id === targetId);
+          if (targetElement && targetElement.ancestorIds.length >= newPosition.newDepth) {
+            newPosition.newParentId = targetElement.ancestorIds[newPosition.newDepth - 1] || null;
+            newPosition.newAncestorIds = targetElement.ancestorIds.slice(0, newPosition.newDepth);
+          }
+        }
+      }
       
       // Perform the move operation
       const updatedFlat = moveElementInFlat(flatElements, draggedId, targetId, finalDropType, newPosition);
