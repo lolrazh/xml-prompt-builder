@@ -22,6 +22,9 @@ export interface DropIndicatorState {
     y: number;
     width: number;
   };
+  // NEW: Store exact parent relationship for accurate dropping
+  parentId?: string | null;
+  ancestorIds?: string[];
 }
 
 // Main hook return type - everything you need for drag operations
@@ -67,56 +70,93 @@ export function useXMLTreeDragDrop(
   const isDragging = activeId !== null;
   
   /**
-   * Calculate valid depth range for contextual drops between adjacent elements
+   * Calculate discrete drop positions like Notion - no ranges, just specific meaningful positions
    */
-  const getValidDepthRange = useCallback((
+  const getDiscreteDropPositions = useCallback((
     targetIndex: number,
-    dropType: 'before' | 'after'
-  ): { minDepth: number; maxDepth: number } => {
-    const targetElement = flatElements[targetIndex];
+    relativeY: number,
+    relativeX: number,
+    targetElement: FlatXMLElement
+  ): Array<{ type: 'before' | 'after' | 'child', depth: number, parentId: string | null, ancestorIds: string[] }> => {
+    const positions = [];
+    const baseIndent = 12;
+    const indentPerLevel = 24;
+    const hoveredDepth = Math.max(0, Math.floor(relativeX / indentPerLevel));
     
-    if (dropType === 'before') {
-      // Look at previous element and target element to determine valid depths
-      const prevElement = targetIndex > 0 ? flatElements[targetIndex - 1] : null;
+    // Previous and next elements for context
+    const prevElement = targetIndex > 0 ? flatElements[targetIndex - 1] : null;
+    const nextElement = targetIndex < flatElements.length - 1 ? flatElements[targetIndex + 1] : null;
+    
+    if (relativeY < 0.33) {
+      // TOP THIRD: "Before" target element
       
-      if (!prevElement) {
-        // No previous element - can only be at root level or target's level
-        return { minDepth: 0, maxDepth: targetElement.depth };
+      // Position 1: Before target at target's depth (most common)
+      positions.push({
+        type: 'before' as const,
+        depth: targetElement.depth,
+        parentId: targetElement.parentId,
+        ancestorIds: [...targetElement.ancestorIds]
+      });
+      
+      // Position 2: As child of previous element (if mouse is indented and previous can have children)
+      if (prevElement && hoveredDepth > targetElement.depth && hoveredDepth <= prevElement.depth + 1) {
+        positions.push({
+          type: 'child' as const,
+          depth: prevElement.depth + 1,
+          parentId: prevElement.id,
+          ancestorIds: [...prevElement.ancestorIds, prevElement.id]
+        });
       }
       
-      // When dropping between prev and target, consider their relationship
-      if (targetElement.ancestorIds.includes(prevElement.id)) {
-        // Target is a descendant of prev - valid depths are prev's level to target's level
-        return { minDepth: prevElement.depth, maxDepth: targetElement.depth };
-      } else {
-        // Target is not a descendant of prev - find their common ancestor level
-        const commonDepth = Math.min(prevElement.depth, targetElement.depth);
-        return { minDepth: commonDepth, maxDepth: Math.max(prevElement.depth, targetElement.depth) };
+    } else if (relativeY > 0.67) {
+      // BOTTOM THIRD: "After" target element
+      
+      // Position 1: After target at target's depth (most common)
+      positions.push({
+        type: 'after' as const,
+        depth: targetElement.depth,
+        parentId: targetElement.parentId,
+        ancestorIds: [...targetElement.ancestorIds]
+      });
+      
+      // Position 2: As child of target (if mouse is indented right)
+      if (hoveredDepth > targetElement.depth) {
+        positions.push({
+          type: 'child' as const,
+          depth: targetElement.depth + 1,
+          parentId: targetElement.id,
+          ancestorIds: [...targetElement.ancestorIds, targetElement.id]
+        });
       }
+      
     } else {
-      // dropType === 'after'
-      // Look at target element and next element to determine valid depths
-      const nextElement = targetIndex < flatElements.length - 1 ? flatElements[targetIndex + 1] : null;
+      // MIDDLE THIRD: Context-sensitive
       
-      if (!nextElement) {
-        // No next element - can be at any level from root to target's level
-        return { minDepth: 0, maxDepth: targetElement.depth };
-      }
-      
-      // When dropping between target and next, consider their relationship
-      if (nextElement.ancestorIds.includes(targetElement.id)) {
-        // Next is a descendant of target - valid depths are target's level to next's level
-        return { minDepth: targetElement.depth, maxDepth: nextElement.depth };
+      if (hoveredDepth > targetElement.depth) {
+        // Mouse indented right: child of target
+        positions.push({
+          type: 'child' as const,
+          depth: targetElement.depth + 1,
+          parentId: targetElement.id,
+          ancestorIds: [...targetElement.ancestorIds, targetElement.id]
+        });
       } else {
-        // Next is not a descendant of target - find their common ancestor level
-        const commonDepth = Math.min(targetElement.depth, nextElement.depth);
-        return { minDepth: commonDepth, maxDepth: Math.max(targetElement.depth, nextElement.depth) };
+        // Mouse at same level or left: before target
+        positions.push({
+          type: 'before' as const,
+          depth: targetElement.depth,
+          parentId: targetElement.parentId,
+          ancestorIds: [...targetElement.ancestorIds]
+        });
       }
     }
+    
+    // Return only the first position (most relevant)
+    return positions.slice(0, 1);
   }, [flatElements]);
 
   /**
-   * Calculate drop position based on mouse coordinates and target element
+   * Calculate drop position based on mouse coordinates and target element - FIXED VERSION
    */
   const calculateDropPosition = useCallback((
     clientY: number,
@@ -130,74 +170,44 @@ export function useXMLTreeDragDrop(
     
     if (!flatElement) return null;
     
-    // Check for edge cases - top/bottom of container
     const elementIndex = flatElements.findIndex(el => el.id === targetId);
-    const isFirstElement = elementIndex === 0;
-    const isLastElement = elementIndex === flatElements.length - 1;
+    const relativeX = clientX - rect.left - 12; // 12px base padding
     
-    // Calculate horizontal position for depth detection
-    const baseIndent = 12; // Base left padding
-    const indentPerLevel = 24; // 24px per depth level  
-    const relativeX = clientX - rect.left - baseIndent;
-    const hoveredDepth = Math.max(0, Math.floor(relativeX / indentPerLevel));
+    // Get the single most appropriate drop position
+    const positions = getDiscreteDropPositions(elementIndex, relativeY, relativeX, flatElement);
     
-    // Regular drop detection
-    let type: 'before' | 'after' | 'child';
-    let depth = flatElement.depth;
+    if (positions.length === 0) return null;
     
-    if (relativeY < 0.25) {
-      // Top quarter - drop before element
-      type = 'before';
-      
-      if (isFirstElement && relativeY < 0.1) {
-        // Very top edge of first element - allow root level
-        depth = Math.min(hoveredDepth, flatElement.depth);
-      } else {
-        // Contextual before drop - constrain to valid depths
-        const { minDepth, maxDepth } = getValidDepthRange(elementIndex, 'before');
-        depth = Math.max(minDepth, Math.min(hoveredDepth, maxDepth));
-      }
-    } else if (relativeY > 0.75) {
-      // Bottom quarter - drop after element  
-      type = 'after';
-      
-      if (isLastElement && relativeY > 0.9) {
-        // Very bottom edge of last element - allow root level
-        depth = Math.min(hoveredDepth, flatElement.depth);
-      } else {
-        // Contextual after drop - constrain to valid depths
-        const { minDepth, maxDepth } = getValidDepthRange(elementIndex, 'after');
-        depth = Math.max(minDepth, Math.min(hoveredDepth, maxDepth));
-      }
+    const position = positions[0];
+    
+    // Calculate Y position based on drop type
+    let yPosition: number;
+    if (position.type === 'before') {
+      yPosition = rect.top;
+    } else if (position.type === 'after') {
+      yPosition = rect.bottom;
     } else {
-      // Middle area - drop as child or same level based on X position
-      if (hoveredDepth > flatElement.depth) {
-        type = 'child';
-        depth = flatElement.depth + 1;
-      } else {
-        type = 'before';
-        // For middle area drops, use the same contextual logic as 'before'
-        const { minDepth, maxDepth } = getValidDepthRange(elementIndex, 'before');
-        depth = Math.max(minDepth, Math.min(hoveredDepth, maxDepth));
-      }
+      // child - position in middle-bottom of element
+      yPosition = rect.top + rect.height * 0.75;
     }
     
     const result = {
-      type,
+      type: position.type,
       targetId,
-      depth,
+      depth: position.depth,
       position: {
         x: rect.left,
-        y: type === 'before' ? rect.top : 
-           type === 'after' ? rect.bottom :
-           rect.top + rect.height * 0.5,
+        y: yPosition,
         width: rect.width
-      }
+      },
+      // Store the calculated parent info for accurate dropping
+      parentId: position.parentId,
+      ancestorIds: position.ancestorIds
     };
     
     console.log('✅ Drop position result:', result);
     return result;
-  }, [flatElements, getValidDepthRange]);
+  }, [flatElements, getDiscreteDropPositions]);
   
   /**
    * Check if element can be dropped at target
@@ -322,25 +332,19 @@ export function useXMLTreeDragDrop(
     const finalDropType = dropIndicator?.type || 'after';
     
     try {
-      // Calculate new position
-      const newPosition = calculateNewPosition(flatElements, draggedId, targetId, finalDropType);
+      // FIXED: Use exact position data from drop indicator instead of calculating
+      let newPosition;
       
-      // ISSUE 2 FIX: Override depth if drop indicator has custom depth
-      if (dropIndicator?.depth !== undefined) {
-        newPosition.newDepth = dropIndicator.depth;
-        
-        // Update parent relationships for custom depth
-        if (newPosition.newDepth === 0) {
-          newPosition.newParentId = null;
-          newPosition.newAncestorIds = [];
-        } else {
-          // Find the appropriate parent at the new depth level
-          const targetElement = flatElements.find(el => el.id === targetId);
-          if (targetElement && targetElement.ancestorIds.length >= newPosition.newDepth) {
-            newPosition.newParentId = targetElement.ancestorIds[newPosition.newDepth - 1] || null;
-            newPosition.newAncestorIds = targetElement.ancestorIds.slice(0, newPosition.newDepth);
-          }
-        }
+      if (dropIndicator && dropIndicator.parentId !== undefined && dropIndicator.ancestorIds !== undefined) {
+        // Use the precise parent relationship from the drop indicator
+        newPosition = {
+          newDepth: dropIndicator.depth,
+          newParentId: dropIndicator.parentId,
+          newAncestorIds: dropIndicator.ancestorIds
+        };
+      } else {
+        // Fallback to old calculation method
+        newPosition = calculateNewPosition(flatElements, draggedId, targetId, finalDropType);
       }
       
       // Perform the move operation

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drag & Drop Issue Investigation</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .test-container {
+            background: white;
+            border: 2px solid #000;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .tree-structure {
+            font-family: monospace;
+            line-height: 1.6;
+            margin: 10px 0;
+        }
+        
+        .problem-explanation {
+            background: #ffeeee;
+            border: 2px solid #ff6666;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        .solution-explanation {
+            background: #eeffee;
+            border: 2px solid #66ff66;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        .drop-position {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 3px;
+        }
+        
+        .current-behavior {
+            background: #ffe6e6;
+        }
+        
+        .expected-behavior {
+            background: #e6ffe6;
+        }
+        
+        .drop-line {
+            height: 2px;
+            background: #000;
+            margin: 2px 5px;
+            flex: 1;
+        }
+        
+        .depth-0 { padding-left: 0px; }
+        .depth-1 { padding-left: 24px; }
+        .depth-2 { padding-left: 48px; }
+        .depth-3 { padding-left: 72px; }
+        
+        code {
+            background: #f0f0f0;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🐛 Drag & Drop Multiple Drop Indicators Issue</h1>
+    
+    <div class="test-container">
+        <h2>Problem Summary</h2>
+        <div class="problem-explanation">
+            <strong>Issue:</strong> When dragging between elements, you see 4 different drop indicator lines instead of the expected discrete positions like in Notion.
+            <br><br>
+            <strong>Root Cause:</strong> The <code>getValidDepthRange()</code> function calculates a range of depths (e.g., min: 0, max: 2), then uses cursor X position to show all possible depths within that range.
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h2>Test Scenario: Drag "paragraph-2" between "section-1" and "section-2"</h2>
+        
+        <h3>Tree Structure:</h3>
+        <div class="tree-structure">
+            <div class="depth-0">📄 document (depth 0)</div>
+            <div class="depth-1">📝 section-1 (depth 1)</div>
+            <div class="depth-2">📄 paragraph-1 (depth 2)</div>
+            <div class="depth-2">📄 paragraph-2 (depth 2) ← DRAGGING THIS</div>
+            <div class="depth-1">📝 section-2 (depth 1)</div>
+        </div>
+        
+        <h3>Current Behavior (BROKEN - Shows 4 indicators):</h3>
+        <div class="current-behavior">
+            <div class="drop-position">
+                Between section-1 and section-2:
+            </div>
+            <div class="drop-position depth-0">1. <div class="drop-line"></div> Drop at depth 0 (root level)</div>
+            <div class="drop-position depth-1">2. <div class="drop-line"></div> Drop at depth 1 (sibling to sections)</div>
+            <div class="drop-position depth-2">3. <div class="drop-line"></div> Drop at depth 2 (where it currently is)</div>
+            <div class="drop-position depth-1">4. <div class="drop-line"></div> Drop at depth 1 (again, but different X position)</div>
+        </div>
+        
+        <h3>Expected Behavior (Like Notion - Shows 2 indicators):</h3>
+        <div class="expected-behavior">
+            <div class="drop-position">
+                Between section-1 and section-2 should only show:
+            </div>
+            <div class="drop-position depth-1">1. <div class="drop-line"></div> Before section-2 (depth 1)</div>
+            <div class="drop-position depth-2">2. <div class="drop-line"></div> As child of section-1 (depth 2)</div>
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h2>Code Analysis</h2>
+        
+        <h3>Problem in useXMLTreeDragDrop.ts:</h3>
+        <div class="problem-explanation">
+            The <code>getValidDepthRange()</code> function returns:
+            <pre><code>{
+  minDepth: 0,  // Minimum valid depth
+  maxDepth: 2   // Maximum valid depth  
+}</code></pre>
+            
+            Then <code>calculateDropPosition()</code> uses cursor X to pick ANY depth between 0-2:
+            <pre><code>const hoveredDepth = Math.max(0, Math.floor(relativeX / indentPerLevel));
+depth = Math.max(minDepth, Math.min(hoveredDepth, maxDepth));</code></pre>
+            
+            This creates multiple possible positions instead of discrete, meaningful ones.
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h2>Solution Approach</h2>
+        <div class="solution-explanation">
+            <strong>Replace range-based logic with discrete position calculation:</strong>
+            <ol>
+                <li><strong>Analyze context</strong> - Look at previous/next elements to determine valid positions</li>
+                <li><strong>Calculate discrete positions</strong> - Only show meaningful drop locations:
+                    <ul>
+                        <li>Before target (same depth as target)</li>
+                        <li>After target (same depth as target)</li>
+                        <li>As child (when appropriate - one level deeper)</li>
+                        <li>At parent level (when escaping nesting)</li>
+                    </ul>
+                </li>
+                <li><strong>Use Y position primarily</strong> - Vertical position determines drop type</li>
+                <li><strong>Use X position secondarily</strong> - Only for child vs sibling distinction</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h2>Test Cases to Verify Fix</h2>
+        <div style="font-family: monospace; font-size: 14px;">
+            <div><strong>Case 1:</strong> Drag between siblings at same level → 1 indicator</div>
+            <div><strong>Case 2:</strong> Drag between parent and child → 2 indicators (before child, as child of parent)</div>
+            <div><strong>Case 3:</strong> Drag from nested to root → 2 indicators (at parent level, before target)</div>
+            <div><strong>Case 4:</strong> Drag into empty container → 1 indicator (as child)</div>
+            <div><strong>Case 5:</strong> Drag to first position → 1 indicator (before first element)</div>
+            <div><strong>Case 6:</strong> Drag to last position → 1-2 indicators (after last element, maybe as child)</div>
+        </div>
+    </div>
+
+    <script>
+        console.log('🔍 Drag & Drop Issue Analysis');
+        console.log('Current problem: getValidDepthRange() creates continuous ranges instead of discrete positions');
+        console.log('Solution: Replace with contextual position calculation like Notion');
+        
+        // Test data structure that represents the current tree
+        const testTree = [
+            {
+                id: 'document',
+                depth: 0,
+                tagName: 'document',
+                children: [
+                    {
+                        id: 'section-1',
+                        depth: 1,
+                        tagName: 'section',
+                        children: [
+                            { id: 'paragraph-1', depth: 2, tagName: 'paragraph' },
+                            { id: 'paragraph-2', depth: 2, tagName: 'paragraph' }
+                        ]
+                    },
+                    {
+                        id: 'section-2', 
+                        depth: 1,
+                        tagName: 'section',
+                        children: []
+                    }
+                ]
+            }
+        ];
+        
+        console.log('Test tree structure:', testTree);
+        
+        // Simulate the current problematic behavior
+        function getCurrentDropPositions(draggedId, targetId) {
+            // This simulates the current getValidDepthRange logic
+            const range = { minDepth: 0, maxDepth: 2 };
+            const positions = [];
+            
+            // Current logic creates positions for EVERY depth in range
+            for (let depth = range.minDepth; depth <= range.maxDepth; depth++) {
+                positions.push({
+                    type: depth === 0 ? 'root' : 'nested',
+                    depth,
+                    description: `Drop at depth ${depth}`
+                });
+            }
+            
+            return positions;
+        }
+        
+        // Simulate the expected behavior 
+        function getExpectedDropPositions(draggedId, targetId) {
+            // This is what the fixed logic should return
+            return [
+                {
+                    type: 'before',
+                    depth: 1,
+                    description: 'Before section-2 (sibling level)'
+                },
+                {
+                    type: 'child',
+                    depth: 2, 
+                    description: 'As child of section-1'
+                }
+            ];
+        }
+        
+        const current = getCurrentDropPositions('paragraph-2', 'section-2');
+        const expected = getExpectedDropPositions('paragraph-2', 'section-2');
+        
+        console.log('❌ Current (broken):', current.length, 'positions');
+        console.log('✅ Expected (fixed):', expected.length, 'positions');
+    </script>
+</body>
+</html>
