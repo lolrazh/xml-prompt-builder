@@ -67,6 +67,55 @@ export function useXMLTreeDragDrop(
   const isDragging = activeId !== null;
   
   /**
+   * Calculate valid depth range for contextual drops between adjacent elements
+   */
+  const getValidDepthRange = useCallback((
+    targetIndex: number,
+    dropType: 'before' | 'after'
+  ): { minDepth: number; maxDepth: number } => {
+    const targetElement = flatElements[targetIndex];
+    
+    if (dropType === 'before') {
+      // Look at previous element and target element to determine valid depths
+      const prevElement = targetIndex > 0 ? flatElements[targetIndex - 1] : null;
+      
+      if (!prevElement) {
+        // No previous element - can only be at root level or target's level
+        return { minDepth: 0, maxDepth: targetElement.depth };
+      }
+      
+      // When dropping between prev and target, consider their relationship
+      if (targetElement.ancestorIds.includes(prevElement.id)) {
+        // Target is a descendant of prev - valid depths are prev's level to target's level
+        return { minDepth: prevElement.depth, maxDepth: targetElement.depth };
+      } else {
+        // Target is not a descendant of prev - find their common ancestor level
+        const commonDepth = Math.min(prevElement.depth, targetElement.depth);
+        return { minDepth: commonDepth, maxDepth: Math.max(prevElement.depth, targetElement.depth) };
+      }
+    } else {
+      // dropType === 'after'
+      // Look at target element and next element to determine valid depths
+      const nextElement = targetIndex < flatElements.length - 1 ? flatElements[targetIndex + 1] : null;
+      
+      if (!nextElement) {
+        // No next element - can be at any level from root to target's level
+        return { minDepth: 0, maxDepth: targetElement.depth };
+      }
+      
+      // When dropping between target and next, consider their relationship
+      if (nextElement.ancestorIds.includes(targetElement.id)) {
+        // Next is a descendant of target - valid depths are target's level to next's level
+        return { minDepth: targetElement.depth, maxDepth: nextElement.depth };
+      } else {
+        // Next is not a descendant of target - find their common ancestor level
+        const commonDepth = Math.min(targetElement.depth, nextElement.depth);
+        return { minDepth: commonDepth, maxDepth: Math.max(targetElement.depth, nextElement.depth) };
+      }
+    }
+  }, [flatElements]);
+
+  /**
    * Calculate drop position based on mouse coordinates and target element
    */
   const calculateDropPosition = useCallback((
@@ -79,7 +128,6 @@ export function useXMLTreeDragDrop(
     const relativeY = (clientY - rect.top) / rect.height;
     const flatElement = flatElements.find(el => el.id === targetId);
     
-    
     if (!flatElement) return null;
     
     // Check for edge cases - top/bottom of container
@@ -87,36 +135,7 @@ export function useXMLTreeDragDrop(
     const isFirstElement = elementIndex === 0;
     const isLastElement = elementIndex === flatElements.length - 1;
     
-    // ISSUE 1 FIX: Top edge of first element = drop at absolute top
-    if (isFirstElement && relativeY < 0.1) {
-      return {
-        type: 'before',
-        targetId,
-        depth: 0, // Always root level for container edges
-        position: {
-          x: rect.left,
-          y: rect.top - 2, // Slightly above the element
-          width: rect.width
-        }
-      };
-    }
-    
-    // ISSUE 1 FIX: Bottom edge of last element = drop at absolute bottom  
-    if (isLastElement && relativeY > 0.9) {
-      return {
-        type: 'after',
-        targetId,
-        depth: 0, // Always root level for container edges
-        position: {
-          x: rect.left,
-          y: rect.bottom + 2, // Slightly below the element
-          width: rect.width
-        }
-      };
-    }
-    
-    // ISSUE 2 FIX: Horizontal cursor detection for hierarchy choice
-    // Calculate which depth level the cursor is hovering over
+    // Calculate horizontal position for depth detection
     const baseIndent = 12; // Base left padding
     const indentPerLevel = 24; // 24px per depth level  
     const relativeX = clientX - rect.left - baseIndent;
@@ -129,21 +148,37 @@ export function useXMLTreeDragDrop(
     if (relativeY < 0.25) {
       // Top quarter - drop before element
       type = 'before';
-      // ISSUE 2: Allow depth choice when dropping between elements
-      depth = Math.min(hoveredDepth, flatElement.depth);
+      
+      if (isFirstElement && relativeY < 0.1) {
+        // Very top edge of first element - allow root level
+        depth = Math.min(hoveredDepth, flatElement.depth);
+      } else {
+        // Contextual before drop - constrain to valid depths
+        const { minDepth, maxDepth } = getValidDepthRange(elementIndex, 'before');
+        depth = Math.max(minDepth, Math.min(hoveredDepth, maxDepth));
+      }
     } else if (relativeY > 0.75) {
       // Bottom quarter - drop after element  
       type = 'after';
-      // ISSUE 2: Allow depth choice when dropping between elements
-      depth = Math.min(hoveredDepth, flatElement.depth);
+      
+      if (isLastElement && relativeY > 0.9) {
+        // Very bottom edge of last element - allow root level
+        depth = Math.min(hoveredDepth, flatElement.depth);
+      } else {
+        // Contextual after drop - constrain to valid depths
+        const { minDepth, maxDepth } = getValidDepthRange(elementIndex, 'after');
+        depth = Math.max(minDepth, Math.min(hoveredDepth, maxDepth));
+      }
     } else {
       // Middle area - drop as child or same level based on X position
       if (hoveredDepth > flatElement.depth) {
         type = 'child';
         depth = flatElement.depth + 1;
       } else {
-        type = 'before'; // Default to before if not clearly child
-        depth = Math.min(hoveredDepth, flatElement.depth);
+        type = 'before';
+        // For middle area drops, use the same contextual logic as 'before'
+        const { minDepth, maxDepth } = getValidDepthRange(elementIndex, 'before');
+        depth = Math.max(minDepth, Math.min(hoveredDepth, maxDepth));
       }
     }
     
@@ -162,7 +197,7 @@ export function useXMLTreeDragDrop(
     
     console.log('✅ Drop position result:', result);
     return result;
-  }, [flatElements]);
+  }, [flatElements, getValidDepthRange]);
   
   /**
    * Check if element can be dropped at target
@@ -203,11 +238,14 @@ export function useXMLTreeDragDrop(
    * Handle drag over - update drop indicator position
    */
   const handleDragOver = useCallback((event: DragOverEvent) => {
-    const { active, over } = event;
+    const { over } = event;
     
     console.log('🚨 DragOverEvent inspection:', {
       hasActivatorEvent: !!event.activatorEvent,
-      activatorCoords: event.activatorEvent ? { x: event.activatorEvent.clientX, y: event.activatorEvent.clientY } : null,
+      activatorCoords: event.activatorEvent ? { 
+        x: (event.activatorEvent as MouseEvent).clientX, 
+        y: (event.activatorEvent as MouseEvent).clientY 
+      } : null,
       hasDelta: !!event.delta,
       delta: event.delta,
       allEventKeys: Object.keys(event)
@@ -240,8 +278,8 @@ export function useXMLTreeDragDrop(
     }
     
     // CRITICAL FIX: Calculate current cursor position, not initial drag position!
-    const currentY = event.activatorEvent.clientY + (event.delta?.y || 0);
-    const currentX = event.activatorEvent.clientX + (event.delta?.x || 0);
+    const currentY = (event.activatorEvent as MouseEvent).clientY + (event.delta?.y || 0);
+    const currentX = (event.activatorEvent as MouseEvent).clientX + (event.delta?.x || 0);
     
     
     // Calculate and set drop indicator
