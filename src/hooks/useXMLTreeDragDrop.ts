@@ -72,8 +72,9 @@ export function useXMLTreeDragDrop(
   const isDragging = activeId !== null;
   
   /**
-   * ULTRA SIMPLE DROP LOGIC - User's Final Request
-   * "If I drag between two elements, it goes in the middle and sticks to the depth of the upper element"
+   * ULTRA SIMPLE DROP LOGIC - Two Rules
+   * Rule 1: "If I drag between two elements, it goes in the middle and sticks to the depth of the upper element"
+   * Rule 2: "If top element has lower depth than bottom element, nest as first child of top element"
    */
   const getDiscreteDropPositions = useCallback((
     targetIndex: number,
@@ -93,7 +94,17 @@ export function useXMLTreeDragDrop(
       }];
     }
     
-    // SIMPLE RULE: Always use the upper element's (previous element's) depth and parent
+    // Rule 2: If top element has lower depth than bottom element, nest as first child
+    if (prevElement.depth < targetElement.depth) {
+      return [{
+        type: 'nested' as const,
+        depth: prevElement.depth + 1,
+        parentId: prevElement.id,
+        ancestorIds: [...prevElement.ancestorIds, prevElement.id]
+      }];
+    }
+    
+    // Rule 1: Use the upper element's depth and parent
     return [{
       type: 'between' as const,
       depth: prevElement.depth,
