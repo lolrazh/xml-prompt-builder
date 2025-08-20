@@ -72,8 +72,8 @@ export function useXMLTreeDragDrop(
   const isDragging = activeId !== null;
   
   /**
-   * Calculate drop positions using USER'S CLEAN LOGIC
-   * Between any two elements: "between" OR "nest under above element"
+   * Calculate drop positions using MATHEMATICAL FOUNDATION
+   * Formula: validDepths = [min(D1, D2), max(D1, D2) + 1]
    */
   const getDiscreteDropPositions = useCallback((
     targetIndex: number,
@@ -83,80 +83,102 @@ export function useXMLTreeDragDrop(
     const indentPerLevel = 24;
     const hoveredDepth = Math.max(0, Math.floor(relativeX / indentPerLevel));
     
-    // Get the element above target (context for nesting decision)
+    // Get the element above target for mathematical calculation
     const prevElement = targetIndex > 0 ? flatElements[targetIndex - 1] : null;
     
     if (!prevElement) {
-      // No previous element - only "between" option at target's level
-      return [{
-        type: 'between' as const,
-        depth: targetElement.depth,
-        parentId: targetElement.parentId,
-        ancestorIds: [...targetElement.ancestorIds]
-      }];
-    }
-    
-    // USER'S SMART RULES based on depth relationships:
-    
-    if (prevElement.depth < targetElement.depth) {
-      // Case: Lower depth → Higher depth (e.g., section → paragraph)
-      // Only nesting makes sense - it would get nested anyway
-      return [{
-        type: 'nested' as const,
-        depth: prevElement.depth + 1,
-        parentId: prevElement.id,
-        ancestorIds: [...prevElement.ancestorIds, prevElement.id],
-        indentOffset: indentPerLevel // Indented line to show nesting
-      }];
-      
-    } else if (prevElement.depth > targetElement.depth) {
-      // Case: Higher depth → Lower depth (e.g., paragraph → section)  
-      // Two options: stay at top level OR drop to bottom level
-      
-      const option1 = {
-        type: 'between' as const,
-        depth: prevElement.depth,
-        parentId: prevElement.parentId,
-        ancestorIds: [...prevElement.ancestorIds]
-      };
-      
-      const option2 = {
-        type: 'between' as const,
-        depth: targetElement.depth,
-        parentId: targetElement.parentId,
-        ancestorIds: [...targetElement.ancestorIds]
-      };
-      
-      // Use cursor X to choose between options
-      return hoveredDepth >= prevElement.depth ? [option1] : [option2];
-      
-    } else {
-      // Case: Same depth (e.g., section → section)
-      // Both options available: place between OR nest under above
-      
-      if (hoveredDepth > targetElement.depth) {
-        // Cursor indented right → nest under above element
-        return [{
-          type: 'nested' as const,
-          depth: prevElement.depth + 1,
-          parentId: prevElement.id,
-          ancestorIds: [...prevElement.ancestorIds, prevElement.id],
-          indentOffset: indentPerLevel // Indented line to show nesting
-        }];
-      } else {
-        // Cursor at same level → place between elements
-        return [{
+      // No previous element - only target's depth and nesting option
+      const options = [
+        {
           type: 'between' as const,
           depth: targetElement.depth,
           parentId: targetElement.parentId,
           ancestorIds: [...targetElement.ancestorIds]
-        }];
+        }
+      ];
+      
+      // Also allow nesting if cursor is indented
+      if (hoveredDepth > targetElement.depth) {
+        options.push({
+          type: 'nested' as const,
+          depth: targetElement.depth + 1,
+          parentId: targetElement.id,
+          ancestorIds: [...targetElement.ancestorIds, targetElement.id],
+          indentOffset: indentPerLevel
+        });
+      }
+      
+      return [options[hoveredDepth > targetElement.depth ? 1 : 0]];
+    }
+    
+    // MATHEMATICAL FOUNDATION: Calculate valid depth range
+    const D1 = prevElement.depth;
+    const D2 = targetElement.depth;
+    const minDepth = Math.min(D1, D2);
+    const maxDepth = Math.max(D1, D2) + 1;
+    
+    // Generate all valid depth options
+    const validDepths = [];
+    for (let depth = minDepth; depth <= maxDepth; depth++) {
+      validDepths.push(depth);
+    }
+    
+    // Select depth based on cursor X position
+    const depthIndex = Math.max(0, Math.min(
+      Math.floor((hoveredDepth - minDepth) / 1), // Map cursor to depth index
+      validDepths.length - 1
+    ));
+    const selectedDepth = validDepths[depthIndex];
+    
+    // Calculate parent relationships for selected depth
+    let parentId: string | null = null;
+    let ancestorIds: string[] = [];
+    let isNested = false;
+    
+    if (selectedDepth === 0) {
+      // Root level
+      parentId = null;
+      ancestorIds = [];
+    } else if (selectedDepth === D1 + 1) {
+      // Nesting into previous element
+      parentId = prevElement.id;
+      ancestorIds = [...prevElement.ancestorIds, prevElement.id];
+      isNested = true;
+    } else if (selectedDepth === D2 + 1) {
+      // Nesting into target element  
+      parentId = targetElement.id;
+      ancestorIds = [...targetElement.ancestorIds, targetElement.id];
+      isNested = true;
+    } else if (selectedDepth === D1) {
+      // Sibling to previous element
+      parentId = prevElement.parentId;
+      ancestorIds = [...prevElement.ancestorIds];
+    } else if (selectedDepth === D2) {
+      // Sibling to target element
+      parentId = targetElement.parentId;
+      ancestorIds = [...targetElement.ancestorIds];
+    } else {
+      // Intermediate depth - find appropriate parent from either element's ancestry
+      if (prevElement.ancestorIds.length >= selectedDepth) {
+        parentId = selectedDepth > 0 ? prevElement.ancestorIds[selectedDepth - 1] : null;
+        ancestorIds = prevElement.ancestorIds.slice(0, selectedDepth);
+      } else if (targetElement.ancestorIds.length >= selectedDepth) {
+        parentId = selectedDepth > 0 ? targetElement.ancestorIds[selectedDepth - 1] : null;
+        ancestorIds = targetElement.ancestorIds.slice(0, selectedDepth);
       }
     }
+    
+    return [{
+      type: isNested ? 'nested' as const : 'between' as const,
+      depth: selectedDepth,
+      parentId,
+      ancestorIds,
+      indentOffset: isNested ? indentPerLevel : 0
+    }];
   }, [flatElements]);
 
   /**
-   * Calculate drop position - SIMPLIFIED UI with consistent line styling
+   * Calculate drop position using MATHEMATICAL FOUNDATION
    */
   const calculateDropPosition = useCallback((
     clientY: number,
@@ -172,14 +194,14 @@ export function useXMLTreeDragDrop(
     const elementIndex = flatElements.findIndex(el => el.id === targetId);
     const relativeX = clientX - rect.left - 12; // 12px base padding
     
-    // Get the clean structural position using user's logic
+    // Use mathematical formula to get valid position
     const positions = getDiscreteDropPositions(elementIndex, relativeX, flatElement);
     
     if (positions.length === 0) return null;
     
     const position = positions[0];
     
-    // CONSISTENT Y POSITIONING: always at element top edge for clean appearance
+    // Consistent Y positioning at element boundary
     const yPosition = rect.top;
     
     const result = {
@@ -191,18 +213,18 @@ export function useXMLTreeDragDrop(
         y: yPosition,
         width: rect.width
       },
-      // Store the exact parent info for accurate dropping
+      // Store exact parent info for accurate dropping
       parentId: position.parentId,
       ancestorIds: position.ancestorIds,
-      // Store indent offset for nested line styling
+      // Store indent offset for visual styling
       indentOffset: position.indentOffset || 0
     };
     
-    console.log('✅ Clean drop position:', {
+    console.log('🧮 Mathematical drop position:', {
       type: position.type,
       depth: position.depth,
-      indented: position.indentOffset ? true : false,
-      parentId: position.parentId
+      parentId: position.parentId,
+      formula: 'validDepths = [min(D1,D2), max(D1,D2)+1]'
     });
     
     return result;
