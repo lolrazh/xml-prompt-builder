@@ -134,6 +134,27 @@ export function useXMLTreeDragDrop(
     targetId: string
   ): DropIndicatorState | null => {
     const rect = targetElement.getBoundingClientRect();
+    
+    // Special case: dropping at the end
+    if (targetId === '__end__') {
+      const lastElement = flatElements[flatElements.length - 1];
+      if (!lastElement) return null;
+      
+      return {
+        type: 'between' as const,
+        targetId: '__end__',
+        depth: 0, // Drop at root level
+        position: {
+          x: rect.left,
+          y: rect.top,
+          width: rect.width
+        },
+        parentId: null,
+        ancestorIds: [],
+        indentOffset: 0
+      };
+    }
+    
     const flatElement = flatElements.find(el => el.id === targetId);
     
     if (!flatElement) return null;
@@ -174,6 +195,9 @@ export function useXMLTreeDragDrop(
    * Check if element can be dropped at target
    */
   const canDrop = useCallback((draggedId: string, targetId: string): boolean => {
+    // Special case: always allow dropping at the end
+    if (targetId === '__end__') return true;
+    
     return canMoveElement(flatElements, draggedId, targetId);
   }, [flatElements]);
   
@@ -296,6 +320,16 @@ export function useXMLTreeDragDrop(
       'before';
     
     try {
+      // Special case: dropping at the end
+      if (targetId === '__end__') {
+        const updatedFlat = moveElementToEnd(flatElements, draggedId);
+        const newTreeElements = flatToTree(updatedFlat);
+        onElementsChange(newTreeElements);
+        
+        console.log('✅ Move to end completed:', { draggedId });
+        return;
+      }
+      
       // FIXED: Use exact position data from drop indicator instead of calculating
       let newPosition;
       
@@ -502,6 +536,73 @@ function moveElementInFlat(
       actual: result.length
     });
   }
+  
+  // Recalculate order values for all elements
+  return recalculateOrderValues(result);
+}
+
+/**
+ * Move element to the end of the tree (at root level)
+ */
+function moveElementToEnd(
+  flatElements: FlatXMLElement[],
+  draggedId: string
+): FlatXMLElement[] {
+  const draggedIndex = flatElements.findIndex(el => el.id === draggedId);
+  if (draggedIndex === -1) {
+    throw new Error('Element not found in flat array');
+  }
+  
+  const draggedElement = flatElements[draggedIndex];
+  
+  // Create a copy of the flat array
+  const result = [...flatElements];
+  
+  // Remove the dragged element (and all its descendants)
+  const draggedDescendants = getAllDescendantsInFlat(result, draggedId);
+  const elementsToMove = [draggedElement, ...draggedDescendants];
+  
+  // Remove all elements to move from their current positions (reverse order to maintain indices)
+  elementsToMove.reverse().forEach(element => {
+    const index = result.findIndex(el => el.id === element.id);
+    if (index !== -1) {
+      result.splice(index, 1);
+    }
+  });
+  
+  // Update the moved elements to be at root level
+  const updatedElementsToMove = elementsToMove.map(element => {
+    if (element.id === draggedId) {
+      // For the moved element itself: place at root level
+      return {
+        ...element,
+        depth: 0,
+        parentId: null,
+        ancestorIds: []
+      };
+    } else {
+      // For descendants: update their ancestry chain
+      const draggedIndex = element.ancestorIds.indexOf(draggedId);
+      let newAncestorIds;
+      
+      if (draggedIndex !== -1) {
+        // Keep only the ancestry below the moved parent
+        newAncestorIds = [draggedId, ...element.ancestorIds.slice(draggedIndex + 1)];
+      } else {
+        // Fallback: shouldn't happen
+        newAncestorIds = element.ancestorIds;
+      }
+      
+      return {
+        ...element,
+        depth: element.depth - draggedElement.depth, // Adjust depth relative to new parent depth
+        ancestorIds: newAncestorIds
+      };
+    }
+  });
+  
+  // Append the moved elements at the end
+  result.push(...updatedElementsToMove);
   
   // Recalculate order values for all elements
   return recalculateOrderValues(result);

@@ -113,6 +113,15 @@ const XMLTreeContainer: React.FC<XMLTreeContainerProps> = ({
             ))}
           </div>
 
+          {/* Drop zone below last element */}
+          {flatElements.length > 0 && (
+            <div 
+              className="h-4 w-full"
+              data-tree-item="__end__"
+              style={{ position: 'relative' }}
+            />
+          )}
+
           {/* Empty state */}
           {flatElements.length === 0 && (
             <div className="xml-tree-empty text-center text-gray-400 text-sm py-8">
