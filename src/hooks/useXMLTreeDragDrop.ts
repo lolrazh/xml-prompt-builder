@@ -72,8 +72,9 @@ export function useXMLTreeDragDrop(
   const isDragging = activeId !== null;
   
   /**
-   * Calculate drop positions using MATHEMATICAL FOUNDATION
+   * Calculate drop positions using ELEGANT MATHEMATICAL SOLUTION
    * Formula: validDepths = [min(D1, D2), max(D1, D2) + 1]
+   * Direct cursor-to-depth mapping with semantic parent calculation
    */
   const getDiscreteDropPositions = useCallback((
     targetIndex: number,
@@ -83,32 +84,31 @@ export function useXMLTreeDragDrop(
     const indentPerLevel = 24;
     const hoveredDepth = Math.max(0, Math.floor(relativeX / indentPerLevel));
     
-    // Get the element above target for mathematical calculation
     const prevElement = targetIndex > 0 ? flatElements[targetIndex - 1] : null;
     
     if (!prevElement) {
-      // No previous element - only target's depth and nesting option
-      const options = [
-        {
+      // Simple case: no previous element - allow current depth or nesting
+      const maxAllowedDepth = targetElement.depth + 1;
+      const selectedDepth = Math.min(hoveredDepth, maxAllowedDepth);
+      
+      if (selectedDepth === targetElement.depth + 1) {
+        // Nesting into target
+        return [{
+          type: 'nested' as const,
+          depth: selectedDepth,
+          parentId: targetElement.id,
+          ancestorIds: [...targetElement.ancestorIds, targetElement.id],
+          indentOffset: indentPerLevel
+        }];
+      } else {
+        // Same level as target
+        return [{
           type: 'between' as const,
           depth: targetElement.depth,
           parentId: targetElement.parentId,
           ancestorIds: [...targetElement.ancestorIds]
-        }
-      ];
-      
-      // Also allow nesting if cursor is indented
-      if (hoveredDepth > targetElement.depth) {
-        options.push({
-          type: 'nested' as const,
-          depth: targetElement.depth + 1,
-          parentId: targetElement.id,
-          ancestorIds: [...targetElement.ancestorIds, targetElement.id],
-          indentOffset: indentPerLevel
-        });
+        }];
       }
-      
-      return [options[hoveredDepth > targetElement.depth ? 1 : 0]];
     }
     
     // MATHEMATICAL FOUNDATION: Calculate valid depth range
@@ -117,68 +117,85 @@ export function useXMLTreeDragDrop(
     const minDepth = Math.min(D1, D2);
     const maxDepth = Math.max(D1, D2) + 1;
     
-    // Generate all valid depth options
-    const validDepths = [];
-    for (let depth = minDepth; depth <= maxDepth; depth++) {
-      validDepths.push(depth);
-    }
+    // DIRECT MAPPING: Cursor position to depth (clamped to valid range)
+    const selectedDepth = Math.max(minDepth, Math.min(hoveredDepth, maxDepth));
     
-    // Select depth based on cursor X position
-    const depthIndex = Math.max(0, Math.min(
-      Math.floor((hoveredDepth - minDepth) / 1), // Map cursor to depth index
-      validDepths.length - 1
-    ));
-    const selectedDepth = validDepths[depthIndex];
+    // SEMANTIC PARENT CALCULATION: Find parent based on depth meaning
+    const parentInfo = findParentForDepth(selectedDepth, prevElement, targetElement);
     
-    // Calculate parent relationships for selected depth
-    let parentId: string | null = null;
-    let ancestorIds: string[] = [];
-    let isNested = false;
-    
-    if (selectedDepth === 0) {
-      // Root level
-      parentId = null;
-      ancestorIds = [];
-    } else if (selectedDepth === D1 + 1) {
-      // Nesting into previous element
-      parentId = prevElement.id;
-      ancestorIds = [...prevElement.ancestorIds, prevElement.id];
-      isNested = true;
-    } else if (selectedDepth === D2 + 1) {
-      // Nesting into target element  
-      parentId = targetElement.id;
-      ancestorIds = [...targetElement.ancestorIds, targetElement.id];
-      isNested = true;
-    } else if (selectedDepth === D1) {
-      // Sibling to previous element
-      parentId = prevElement.parentId;
-      ancestorIds = [...prevElement.ancestorIds];
-    } else if (selectedDepth === D2) {
-      // Sibling to target element
-      parentId = targetElement.parentId;
-      ancestorIds = [...targetElement.ancestorIds];
-    } else {
-      // Intermediate depth - find appropriate parent from either element's ancestry
-      if (prevElement.ancestorIds.length >= selectedDepth) {
-        parentId = selectedDepth > 0 ? prevElement.ancestorIds[selectedDepth - 1] : null;
-        ancestorIds = prevElement.ancestorIds.slice(0, selectedDepth);
-      } else if (targetElement.ancestorIds.length >= selectedDepth) {
-        parentId = selectedDepth > 0 ? targetElement.ancestorIds[selectedDepth - 1] : null;
-        ancestorIds = targetElement.ancestorIds.slice(0, selectedDepth);
-      }
-    }
+    console.log('🎯 Elegant drop calculation:', {
+      formula: `[min(${D1},${D2}), max(${D1},${D2})+1] = [${minDepth}, ${maxDepth}]`,
+      cursor: hoveredDepth,
+      selected: selectedDepth,
+      parent: parentInfo.parentId
+    });
     
     return [{
-      type: isNested ? 'nested' as const : 'between' as const,
+      type: parentInfo.isNested ? 'nested' as const : 'between' as const,
       depth: selectedDepth,
-      parentId,
-      ancestorIds,
-      indentOffset: isNested ? indentPerLevel : 0
+      parentId: parentInfo.parentId,
+      ancestorIds: parentInfo.ancestorIds,
+      indentOffset: parentInfo.isNested ? indentPerLevel : 0
     }];
   }, [flatElements]);
 
   /**
-   * Calculate drop position using MATHEMATICAL FOUNDATION
+   * Find parent for a given depth using semantic logic
+   */
+  const findParentForDepth = useCallback((
+    selectedDepth: number,
+    prevElement: FlatXMLElement,
+    targetElement: FlatXMLElement
+  ): { parentId: string | null; ancestorIds: string[]; isNested: boolean } => {
+    
+    if (selectedDepth === 0) {
+      return { parentId: null, ancestorIds: [], isNested: false };
+    }
+    
+    const parentDepth = selectedDepth - 1;
+    
+    // Check if we're nesting into one of the adjacent elements
+    if (prevElement.depth === parentDepth) {
+      return {
+        parentId: prevElement.id,
+        ancestorIds: [...prevElement.ancestorIds, prevElement.id],
+        isNested: true
+      };
+    }
+    
+    if (targetElement.depth === parentDepth) {
+      return {
+        parentId: targetElement.id,
+        ancestorIds: [...targetElement.ancestorIds, targetElement.id],
+        isNested: true
+      };
+    }
+    
+    // Look for parent in ancestry chains (sibling relationship)
+    if (prevElement.ancestorIds.length > parentDepth) {
+      const parentId = prevElement.ancestorIds[parentDepth];
+      return {
+        parentId,
+        ancestorIds: prevElement.ancestorIds.slice(0, selectedDepth),
+        isNested: false
+      };
+    }
+    
+    if (targetElement.ancestorIds.length > parentDepth) {
+      const parentId = targetElement.ancestorIds[parentDepth];
+      return {
+        parentId,
+        ancestorIds: targetElement.ancestorIds.slice(0, selectedDepth),
+        isNested: false
+      };
+    }
+    
+    // Fallback - shouldn't happen with valid tree structure
+    return { parentId: null, ancestorIds: [], isNested: false };
+  }, []);
+
+  /**
+   * Calculate drop position using ELEGANT MATHEMATICAL SOLUTION
    */
   const calculateDropPosition = useCallback((
     clientY: number,
@@ -194,7 +211,7 @@ export function useXMLTreeDragDrop(
     const elementIndex = flatElements.findIndex(el => el.id === targetId);
     const relativeX = clientX - rect.left - 12; // 12px base padding
     
-    // Use mathematical formula to get valid position
+    // Use elegant direct mapping to get position
     const positions = getDiscreteDropPositions(elementIndex, relativeX, flatElement);
     
     if (positions.length === 0) return null;
@@ -219,13 +236,6 @@ export function useXMLTreeDragDrop(
       // Store indent offset for visual styling
       indentOffset: position.indentOffset || 0
     };
-    
-    console.log('🧮 Mathematical drop position:', {
-      type: position.type,
-      depth: position.depth,
-      parentId: position.parentId,
-      formula: 'validDepths = [min(D1,D2), max(D1,D2)+1]'
-    });
     
     return result;
   }, [flatElements, getDiscreteDropPositions]);
@@ -443,8 +453,21 @@ function moveElementInFlat(
       insertIndex = originalTargetIndex + 1;
       break;
     case 'child':
-      // Insert after the last child of target element
-      insertIndex = findLastChildIndex(flatElements, targetId) + 1;
+      // FIXED: Insert after the last child of target element
+      const lastChildIndex = findLastChildIndex(flatElements, targetId);
+      insertIndex = lastChildIndex + 1;
+      
+      // Ensure we don't exceed array bounds
+      if (insertIndex > flatElements.length) {
+        insertIndex = flatElements.length;
+      }
+      
+      console.log('🎯 Child drop insertion:', {
+        targetId,
+        lastChildIndex,
+        insertIndex,
+        arrayLength: flatElements.length
+      });
       break;
     default:
       throw new Error(`Invalid drop type: ${dropType}`);
@@ -511,8 +534,30 @@ function moveElementInFlat(
     }
   });
   
-  // Insert the moved elements at the calculated position
-  result.splice(insertIndex, 0, ...updatedElementsToMove);
+  // FIXED: Insert the moved elements with validation
+  const originalLength = result.length;
+  
+  // Ensure insertion index is valid
+  const safeInsertIndex = Math.max(0, Math.min(insertIndex, result.length));
+  
+  console.log('🔧 Element insertion:', {
+    originalLength,
+    insertIndex,
+    safeInsertIndex,
+    elementsToInsert: updatedElementsToMove.length
+  });
+  
+  result.splice(safeInsertIndex, 0, ...updatedElementsToMove);
+  
+  // Validate the operation succeeded
+  if (result.length === originalLength + updatedElementsToMove.length) {
+    console.log('✅ Elements properly inserted');
+  } else {
+    console.error('❌ Element insertion failed!', {
+      expected: originalLength + updatedElementsToMove.length,
+      actual: result.length
+    });
+  }
   
   // Recalculate order values for all elements
   return recalculateOrderValues(result);
@@ -527,17 +572,32 @@ function getAllDescendantsInFlat(flatElements: FlatXMLElement[], parentId: strin
 
 /**
  * Find the index of the last child (including nested children) of a parent
+ * FIXED: Properly handles last elements with no children
  */
 function findLastChildIndex(flatElements: FlatXMLElement[], parentId: string): number {
-  let lastChildIndex = flatElements.findIndex(el => el.id === parentId);
+  const parentIndex = flatElements.findIndex(el => el.id === parentId);
+  if (parentIndex === -1) {
+    console.error('❌ Parent not found:', parentId);
+    return -1;
+  }
   
-  for (let i = lastChildIndex + 1; i < flatElements.length; i++) {
+  let lastChildIndex = parentIndex; // Start with parent's index
+  
+  // Look for children AFTER the parent
+  for (let i = parentIndex + 1; i < flatElements.length; i++) {
     if (flatElements[i].ancestorIds.includes(parentId)) {
       lastChildIndex = i;
     } else {
-      break;
+      break; // No more children of this parent
     }
   }
+  
+  console.log('🔍 findLastChildIndex:', {
+    parentId,
+    parentIndex,
+    lastChildIndex,
+    hasChildren: lastChildIndex > parentIndex
+  });
   
   return lastChildIndex;
 }
