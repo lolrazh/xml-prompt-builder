@@ -72,10 +72,10 @@ export function useXMLTreeDragDrop(
   const isDragging = activeId !== null;
   
   /**
-   * ULTRA SIMPLE DROP LOGIC - Three Rules
-   * Rule 1: "If I drag between two elements, it goes in the middle and sticks to the depth of the upper element"
-   * Rule 2: "If top element has lower depth than bottom element, nest as first child of top element"
-   * Rule 3: "If dragging between parent and child, become first child of parent"
+   * Drop Depth Rules (Previous-Item Logic)
+   * - Default: match the previous (upper) element's depth/parent
+   * - Exception: if the target is a direct child of the previous element,
+   *   drop as the parent's first child (depth = prev.depth + 1)
    */
   const getDiscreteDropPositions = useCallback((
     targetIndex: number,
@@ -95,7 +95,7 @@ export function useXMLTreeDragDrop(
       }];
     }
     
-    // Rule 3: If dragging between parent and its child, become first child of parent
+    // If dragging between parent and its child, become first child of parent
     if (targetElement.parentId === prevElement.id) {
       return [{
         type: 'first-child' as const,
@@ -105,17 +105,7 @@ export function useXMLTreeDragDrop(
       }];
     }
     
-    // Rule 2: If top element has lower depth than bottom element, nest as first child
-    if (prevElement.depth < targetElement.depth) {
-      return [{
-        type: 'nested' as const,
-        depth: prevElement.depth + 1,
-        parentId: prevElement.id,
-        ancestorIds: [...prevElement.ancestorIds, prevElement.id]
-      }];
-    }
-    
-    // Rule 1: Use the upper element's depth and parent
+    // Default: match the previous element's depth and parent
     return [{
       type: 'between' as const,
       depth: prevElement.depth,
@@ -135,7 +125,7 @@ export function useXMLTreeDragDrop(
   ): DropIndicatorState | null => {
     const rect = targetElement.getBoundingClientRect();
     
-    // Special case: dropping at the end
+    // Special case: dropping at the end -> match last element's depth/parent
     if (targetId === '__end__') {
       const lastElement = flatElements[flatElements.length - 1];
       if (!lastElement) return null;
@@ -143,14 +133,14 @@ export function useXMLTreeDragDrop(
       return {
         type: 'between' as const,
         targetId: '__end__',
-        depth: 0, // Drop at root level
+        depth: lastElement.depth,
         position: {
           x: rect.left,
           y: rect.top,
           width: rect.width
         },
-        parentId: null,
-        ancestorIds: [],
+        parentId: lastElement.parentId,
+        ancestorIds: [...lastElement.ancestorIds],
         indentOffset: 0
       };
     }
@@ -182,10 +172,10 @@ export function useXMLTreeDragDrop(
       indentOffset: 0 // No indentation - always simple between lines
     };
     
-    console.log('🎯 Ultra simple drop:', {
-      rule: 'Use upper element depth',
+    console.log('🎯 Drop preview (prev-item rule):', {
       depth: position.depth,
-      parentId: position.parentId
+      parentId: position.parentId,
+      type: position.type
     });
     
     return result;
@@ -320,13 +310,21 @@ export function useXMLTreeDragDrop(
       'before';
     
     try {
-      // Special case: dropping at the end
+      // Special case: dropping at the end -> treat as AFTER last element, matching last element's depth/parent
       if (targetId === '__end__') {
-        const updatedFlat = moveElementToEnd(flatElements, draggedId);
+        const last = flatElements[flatElements.length - 1];
+        if (!last) return;
+
+        const newPosition = {
+          newDepth: last.depth,
+          newParentId: last.parentId,
+          newAncestorIds: [...last.ancestorIds]
+        };
+        const updatedFlat = moveElementInFlat(flatElements, draggedId, last.id, 'after', newPosition);
         const newTreeElements = flatToTree(updatedFlat);
         onElementsChange(newTreeElements);
-        
-        console.log('✅ Move to end completed:', { draggedId });
+
+        console.log('✅ Move to end (after last) completed:', { draggedId, lastId: last.id });
         return;
       }
       

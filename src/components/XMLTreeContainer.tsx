@@ -2,7 +2,7 @@
 // Manages the entire drag-and-drop tree experience with flat structure
 
 import React from 'react';
-import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { cn } from '@/lib/utils';
 import { useXMLTreeDragDrop } from '@/hooks/useXMLTreeDragDrop';
@@ -53,6 +53,19 @@ const XMLTreeContainer: React.FC<XMLTreeContainerProps> = ({
     isValidDropTarget,
     flatElements
   } = useXMLTreeDragDrop(elements, onElementsChange);
+
+  // End-of-list droppable to allow explicit dropping after the last item
+  const EndDropTarget: React.FC = () => {
+    const { setNodeRef } = useDroppable({ id: '__end__' });
+    return (
+      <div
+        ref={setNodeRef}
+        className="h-4 w-full"
+        data-tree-item="__end__"
+        style={{ position: 'relative' }}
+      />
+    );
+  };
 
   // Configure drag sensors
   const sensors = useSensors(
@@ -114,13 +127,7 @@ const XMLTreeContainer: React.FC<XMLTreeContainerProps> = ({
           </div>
 
           {/* Drop zone below last element */}
-          {flatElements.length > 0 && (
-            <div 
-              className="h-4 w-full"
-              data-tree-item="__end__"
-              style={{ position: 'relative' }}
-            />
-          )}
+          {flatElements.length > 0 && <EndDropTarget />}
 
           {/* Empty state */}
           {flatElements.length === 0 && (
