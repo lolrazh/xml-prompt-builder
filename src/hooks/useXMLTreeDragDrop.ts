@@ -21,6 +21,8 @@ export interface DropIndicatorState {
     x: number;
     y: number;
     width: number;
+    paddingLeft: number;
+    paddingRight: number;
   };
   // Store exact parent relationship for accurate dropping
   parentId?: string | null;
@@ -130,6 +132,9 @@ export function useXMLTreeDragDrop(
     targetId: string
   ): DropIndicatorState | null => {
     const rect = targetElement.getBoundingClientRect();
+    const cs = getComputedStyle(targetElement as HTMLElement);
+    const paddingLeft = parseFloat(cs.paddingLeft || '0') || 0;
+    const paddingRight = parseFloat(cs.paddingRight || '0') || 0;
     
     // Special case: dropping at the end -> match last element's depth/parent
     if (targetId === '__end__') {
@@ -143,7 +148,9 @@ export function useXMLTreeDragDrop(
         position: {
           x: rect.left,
           y: rect.top,
-          width: rect.width
+          width: rect.width,
+          paddingLeft,
+          paddingRight
         },
         parentId: lastElement.parentId,
         ancestorIds: [...lastElement.ancestorIds],
@@ -171,7 +178,9 @@ export function useXMLTreeDragDrop(
       position: {
         x: rect.left,
         y: rect.top,
-        width: rect.width
+        width: rect.width,
+        paddingLeft,
+        paddingRight
       },
       parentId: position.parentId,
       ancestorIds: position.ancestorIds,

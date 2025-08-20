@@ -20,17 +20,10 @@ const DropIndicatorLine: React.FC<DropIndicatorLineProps> = ({
   
   // Calculate positioning to align perfectly inside rounded item boxes
   const getLineStyles = (): React.CSSProperties => {
-    // Match XMLTreeItem padding and depth indentation:
-    // - Each item has p-2 (8px) horizontal padding
-    // - Depth indent is 1.5rem (24px) per level + 0.375rem (6px) base
-    const itemHPad = 8; // px from p-2
-    const baseDepthPad = 6; // px from 0.375rem
-    const depthPad = depth * 24 + baseDepthPad; // px
-    const inset = 2; // extra inset to avoid touching rounded corners
-
-    // Compute left/right inside the item box so the line never bleeds past rounded edges
-    const left = position.x + itemHPad + depthPad + inset;
-    const right = position.x + position.width - itemHPad - inset;
+    // Use the actual computed paddings of the target item for perfect symmetry
+    const inset = 2; // avoid touching rounded corners
+    const left = position.x + (position.paddingLeft ?? 0) + inset;
+    const right = position.x + position.width - (position.paddingRight ?? 0) - inset;
     const width = Math.max(0, right - left);
 
     return {
