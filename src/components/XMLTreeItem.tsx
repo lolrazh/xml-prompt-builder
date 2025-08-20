@@ -16,6 +16,7 @@ interface XMLTreeItemProps {
   isDragging: boolean;
   isAnyDragActive: boolean;
   isValidDropTarget: boolean;
+  isOverTarget: boolean;
   onElementClick: (element: FlatXMLElement) => void;
   onAddChild: (elementId: string) => void;
   onDelete: (elementId: string) => void;
@@ -32,6 +33,7 @@ const XMLTreeItem: React.FC<XMLTreeItemProps> = ({
   isDragging,
   isAnyDragActive,
   isValidDropTarget,
+  isOverTarget,
   onElementClick,
   onAddChild,
   onDelete,
@@ -76,7 +78,8 @@ const XMLTreeItem: React.FC<XMLTreeItemProps> = ({
         isSelected && "bg-[#9AE66E]/50",
         !isSelected && "hover:bg-gray-100 dark:hover:bg-gray-800",
         isDragging && "z-50",
-        isValidDropTarget && !isDragging && "ring-2 ring-blue-300 ring-opacity-50"
+        // Only outline the current hovered drop target; keep it inside rounded edges
+        isOverTarget && !isDragging && "ring-2 ring-inset ring-blue-400/60"
       )}
       data-tree-item={element.id}
       data-testid={`tree-item-${element.id}`}

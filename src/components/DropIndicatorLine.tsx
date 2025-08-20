@@ -18,39 +18,36 @@ const DropIndicatorLine: React.FC<DropIndicatorLineProps> = ({
 
   const { type, depth, position } = indicator;
   
-  // Calculate positioning based on drop type
+  // Calculate positioning to align perfectly inside rounded item boxes
   const getLineStyles = (): React.CSSProperties => {
-    const baseStyles: React.CSSProperties = {
-      position: 'fixed',
-      height: '2px',
-      backgroundColor: '#000000', // Clean consistent black line
-      borderRadius: '1px',
-      zIndex: 1000,
-      transition: 'all 0.15s ease-out',
-      pointerEvents: 'none',
-      // Subtle shadow for visibility
-      boxShadow: '0 0 4px rgba(0, 0, 0, 0.3)',
-    };
+    // Match XMLTreeItem padding and depth indentation:
+    // - Each item has p-2 (8px) horizontal padding
+    // - Depth indent is 1.5rem (24px) per level + 0.375rem (6px) base
+    const itemHPad = 8; // px from p-2
+    const baseDepthPad = 6; // px from 0.375rem
+    const depthPad = depth * 24 + baseDepthPad; // px
+    const inset = 2; // extra inset to avoid touching rounded corners
 
-    // SIMPLIFIED: Same line style, different indentation for nesting
-    const baseIndent = depth * 24; // Standard depth indentation
-    const extraIndent = indicator.indentOffset || 0; // Additional indent for nested drops
-    const leftBleed = 4; // Small bleed on the left
-    
-    const totalIndent = baseIndent + extraIndent;
-    const lineWidth = type === 'nested' 
-      ? position.width - totalIndent + leftBleed - 20 // Shorter line for nested drops
-      : position.width - baseIndent + leftBleed; // Full line for between drops
-    
+    // Compute left/right inside the item box so the line never bleeds past rounded edges
+    const left = position.x + itemHPad + depthPad + inset;
+    const right = position.x + position.width - itemHPad - inset;
+    const width = Math.max(0, right - left);
+
     return {
-      ...baseStyles,
-      left: position.x + totalIndent - leftBleed,
-      top: position.y - 1, // Always at element boundary
-      width: lineWidth,
-      // Clean consistent styling - no special effects
+      position: 'fixed',
+      height: 2,
+      backgroundColor: '#000',
+      borderRadius: 9999, // fully rounded ends
+      zIndex: 1000,
+      transition: 'opacity 120ms ease-out, left 80ms ease-out, width 80ms ease-out, top 80ms ease-out',
+      pointerEvents: 'none',
+      left,
+      // Place exactly at the boundary between items; offset by 1px to center the 2px line
+      top: Math.round(position.y) - 1,
+      width,
       opacity: 1,
       transform: 'none',
-    };
+    } as React.CSSProperties;
   };
 
   return (
