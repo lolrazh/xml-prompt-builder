@@ -56,8 +56,14 @@ export function useXMLTreeDragDrop(
   onElementsChange: (newElements: XMLElement[]) => void
 ): UseXMLTreeDragDropReturn {
   
-  // Convert tree to flat structure for efficient operations
-  const flatElements = useMemo(() => treeToFlat(elements), [elements]);
+  // Convert tree to flat structure (all elements, including children of collapsed nodes)
+  const allFlatElements = useMemo(() => treeToFlat(elements), [elements]);
+
+  // Compute the visible subset for rendering (hide any element whose ancestor is collapsed)
+  const flatElements = useMemo(() => {
+    const collapsedIds = new Set(allFlatElements.filter(el => el.collapsed).map(el => el.id));
+    return allFlatElements.filter(el => !el.ancestorIds.some(aid => collapsedIds.has(aid)));
+  }, [allFlatElements]);
   
   // Drag state management
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -65,8 +71,8 @@ export function useXMLTreeDragDrop(
   
   // Derived state
   const draggedElement = useMemo(() => 
-    activeId ? flatElements.find(el => el.id === activeId) || null : null,
-    [activeId, flatElements]
+    activeId ? allFlatElements.find(el => el.id === activeId) || null : null,
+    [activeId, allFlatElements]
   );
   
   const isDragging = activeId !== null;
@@ -188,8 +194,8 @@ export function useXMLTreeDragDrop(
     // Special case: always allow dropping at the end
     if (targetId === '__end__') return true;
     
-    return canMoveElement(flatElements, draggedId, targetId);
-  }, [flatElements]);
+    return canMoveElement(allFlatElements, draggedId, targetId);
+  }, [allFlatElements]);
   
   /**
    * Check if target is a valid drop location
@@ -204,7 +210,8 @@ export function useXMLTreeDragDrop(
    */
   const getDepthStyle = useCallback((depth: number): React.CSSProperties => ({
     '--depth': depth,
-    paddingLeft: `calc(${depth} * 1.5rem)`,
+    // Small base indent so depth 0 isn't flush with the edge
+    paddingLeft: `calc(${depth} * 1.5rem + 0.375rem)`,
     position: 'relative'
   } as React.CSSProperties), []);
   
@@ -320,7 +327,7 @@ export function useXMLTreeDragDrop(
           newParentId: last.parentId,
           newAncestorIds: [...last.ancestorIds]
         };
-        const updatedFlat = moveElementInFlat(flatElements, draggedId, last.id, 'after', newPosition);
+        const updatedFlat = moveElementInFlat(allFlatElements, draggedId, last.id, 'after', newPosition);
         const newTreeElements = flatToTree(updatedFlat);
         onElementsChange(newTreeElements);
 
@@ -340,11 +347,11 @@ export function useXMLTreeDragDrop(
         };
       } else {
         // Fallback to old calculation method
-        newPosition = calculateNewPosition(flatElements, draggedId, targetId, finalDropType);
+        newPosition = calculateNewPosition(allFlatElements, draggedId, targetId, finalDropType);
       }
       
       // Perform the move operation
-      const updatedFlat = moveElementInFlat(flatElements, draggedId, targetId, finalDropType, newPosition);
+      const updatedFlat = moveElementInFlat(allFlatElements, draggedId, targetId, finalDropType, newPosition);
       
       // Convert back to tree structure
       const newTreeElements = flatToTree(updatedFlat);
@@ -362,7 +369,7 @@ export function useXMLTreeDragDrop(
     } catch (error) {
       console.error('❌ Move operation failed:', error);
     }
-  }, [flatElements, dropIndicator, canDrop, onElementsChange]);
+  }, [allFlatElements, flatElements, dropIndicator, canDrop, onElementsChange]);
   
   return {
     // State
@@ -418,12 +425,13 @@ function moveElementInFlat(
       insertIndex = originalTargetIndex + 1;
       break;
     case 'first-child':
-      // Insert immediately after parent (as first child)
-      insertIndex = originalTargetIndex + 1;
+      // Insert immediately after the parent (as first child), regardless of which child is the current target
+      const parentIndexInOriginal = flatElements.findIndex(el => el.id === newPosition.newParentId);
+      insertIndex = (parentIndexInOriginal === -1 ? originalTargetIndex : parentIndexInOriginal) + 1;
       
       console.log('🎯 First child insertion:', {
         targetId,
-        parentIndex: originalTargetIndex,
+        parentIndex: parentIndexInOriginal,
         insertIndex,
         arrayLength: flatElements.length
       });

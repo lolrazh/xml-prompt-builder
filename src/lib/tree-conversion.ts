@@ -47,8 +47,8 @@ export function treeToFlat(elements: XMLElement[]): FlatXMLElement[] {
       
       result.push(flatElement);
       
-      // Recursively process children ONLY if element is not collapsed
-      if (item.children && item.children.length > 0 && !item.collapsed) {
+      // Recursively process children ALWAYS (we will hide them in UI when collapsed)
+      if (item.children && item.children.length > 0) {
         traverse(
           item.children, 
           depth + 1, 
