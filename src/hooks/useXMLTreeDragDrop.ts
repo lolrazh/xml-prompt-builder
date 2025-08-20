@@ -14,7 +14,7 @@ import type { XMLElement } from '@/components/PromptBuilder';
 
 // Drop indicator state - shows where element will be placed
 export interface DropIndicatorState {
-  type: 'between' | 'nested';
+  type: 'between' | 'nested' | 'first-child';
   targetId: string;
   depth: number;
   position: {
@@ -81,7 +81,7 @@ export function useXMLTreeDragDrop(
     targetIndex: number,
     relativeX: number,
     targetElement: FlatXMLElement
-  ): Array<{ type: 'between' | 'nested', depth: number, parentId: string | null, ancestorIds: string[], indentOffset?: number }> => {
+  ): Array<{ type: 'between' | 'nested' | 'first-child', depth: number, parentId: string | null, ancestorIds: string[], indentOffset?: number }> => {
     
     const prevElement = targetIndex > 0 ? flatElements[targetIndex - 1] : null;
     
@@ -98,7 +98,7 @@ export function useXMLTreeDragDrop(
     // Rule 3: If dragging between parent and its child, become first child of parent
     if (targetElement.parentId === prevElement.id) {
       return [{
-        type: 'nested' as const,
+        type: 'first-child' as const,
         depth: prevElement.depth + 1,
         parentId: prevElement.id,
         ancestorIds: [...prevElement.ancestorIds, prevElement.id]
@@ -290,7 +290,10 @@ export function useXMLTreeDragDrop(
     }
     
     // Map new drop types to the expected format for moveElementInFlat  
-    const finalDropType = dropIndicator?.type === 'nested' ? 'child' : 'before';
+    const finalDropType = 
+      dropIndicator?.type === 'nested' ? 'child' : 
+      dropIndicator?.type === 'first-child' ? 'first-child' : 
+      'before';
     
     try {
       // FIXED: Use exact position data from drop indicator instead of calculating
@@ -359,7 +362,7 @@ function moveElementInFlat(
   flatElements: FlatXMLElement[],
   draggedId: string,
   targetId: string,
-  dropType: 'before' | 'after' | 'child',
+  dropType: 'before' | 'after' | 'child' | 'first-child',
   newPosition: { newDepth: number; newParentId: string | null; newAncestorIds: string[] }
 ): FlatXMLElement[] {
   
@@ -381,6 +384,17 @@ function moveElementInFlat(
       break;
     case 'after':
       insertIndex = originalTargetIndex + 1;
+      break;
+    case 'first-child':
+      // Insert immediately after parent (as first child)
+      insertIndex = originalTargetIndex + 1;
+      
+      console.log('🎯 First child insertion:', {
+        targetId,
+        parentIndex: originalTargetIndex,
+        insertIndex,
+        arrayLength: flatElements.length
+      });
       break;
     case 'child':
       // FIXED: Insert after the last child of target element
