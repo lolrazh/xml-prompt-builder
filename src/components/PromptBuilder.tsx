@@ -6,7 +6,7 @@ import { Trash, Plus, Copy, MoveVertical, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn, estimateTokenCount, formatTokenCount } from '@/lib/utils';
 import ElementEditor from './ElementEditor';
-import ElementTree from './ElementTree';
+import XMLTreeContainer from './XMLTreeContainer';
 import { looseParseXML } from '@/lib/loose-xml';
 
 export interface XMLElement {
@@ -19,13 +19,27 @@ export interface XMLElement {
 }
 
 const PromptBuilder: React.FC = () => {
-  const [elements, setElements] = useState<XMLElement[]>([]);
+  const STORAGE_KEY = 'xmlpb_elements_v1';
+
+  const [elements, setElements] = useState<XMLElement[]>(() => {
+    try {
+      const raw = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed as XMLElement[];
+      if (parsed && Array.isArray((parsed as any).elements)) return (parsed as any).elements as XMLElement[];
+      return [];
+    } catch {
+      return [];
+    }
+  });
   const [outputXML, setOutputXML] = useState<string>('');
   const [selectedElement, setSelectedElement] = useState<XMLElement | null>(null);
   const [tokenCount, setTokenCount] = useState<number>(0);
   const [rawInput, setRawInput] = useState<string>('');
   const [isDragActive, setIsDragActive] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
 
   const importFromText = async (text: string) => {
     try {
@@ -164,6 +178,15 @@ const PromptBuilder: React.FC = () => {
     const xml = generateXML(elements);
     setOutputXML(xml);
     setTokenCount(estimateTokenCount(xml));
+  }, [elements]);
+
+  // Persist elements to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(elements));
+    } catch {
+      // ignore storage errors (quota, privacy mode, etc.)
+    }
   }, [elements]);
 
   useEffect(() => {
@@ -489,7 +512,13 @@ const PromptBuilder: React.FC = () => {
     setElements([]);
     setSelectedElement(null);
     setRawInput('');
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // ignore
+    }
   };
+
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -538,13 +567,14 @@ const PromptBuilder: React.FC = () => {
               <p>No elements yet. Add an element to begin building your prompt.</p>
             </div>
           ) : (
-            <ElementTree 
+            <XMLTreeContainer 
               elements={elements} 
+              onElementsChange={setElements}
               onElementSelect={setSelectedElement}
               onAddChild={addChildElement}
               onDelete={deleteElement}
               onToggleCollapse={toggleCollapseElement}
-              onToggleVisibility={toggleVisibilityElement} // Add this line
+              onToggleVisibility={toggleVisibilityElement}
               onMoveUp={moveElementUp}
               onMoveDown={moveElementDown}
               selectedElementId={selectedElement?.id}
