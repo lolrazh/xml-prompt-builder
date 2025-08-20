@@ -1,7 +1,7 @@
 // XML Tree Drag & Drop Hook - The Brain of Our Drag System
 // Clean, predictable, and absolutely rock-solid
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import type { DragStartEvent, DragOverEvent, DragEndEvent } from '@dnd-kit/core';
 import { 
   treeToFlat, 
@@ -187,12 +187,6 @@ export function useXMLTreeDragDrop(
       indentOffset: 0 // No indentation - always simple between lines
     };
     
-    console.log('🎯 Drop preview (prev-item rule):', {
-      depth: position.depth,
-      parentId: position.parentId,
-      type: position.type
-    });
-    
     return result;
   }, [flatElements, getDiscreteDropPositions]);
   
@@ -238,21 +232,21 @@ export function useXMLTreeDragDrop(
   /**
    * Handle drag over - update drop indicator position
    */
+  // RAF throttle for drop-indicator updates
+  const indicatorRef = useRef<DropIndicatorState | null>(null);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
   const handleDragOver = useCallback((event: DragOverEvent) => {
     const { over } = event;
     
-    console.log('🚨 DragOverEvent inspection:', {
-      hasActivatorEvent: !!event.activatorEvent,
-      activatorCoords: event.activatorEvent ? { 
-        x: (event.activatorEvent as MouseEvent).clientX, 
-        y: (event.activatorEvent as MouseEvent).clientY 
-      } : null,
-      hasDelta: !!event.delta,
-      delta: event.delta,
-      allEventKeys: Object.keys(event)
-    });
-    
     if (!over || !activeId) {
+      indicatorRef.current = null;
       setDropIndicator(null);
       return;
     }
@@ -261,6 +255,7 @@ export function useXMLTreeDragDrop(
     
     // Don't show indicator when dragging over self
     if (targetId === activeId) {
+      indicatorRef.current = null;
       setDropIndicator(null);
       return;
     }
@@ -274,13 +269,26 @@ export function useXMLTreeDragDrop(
     // Get target element from DOM
     const targetElement = document.querySelector(`[data-tree-item="${targetId}"]`);
     if (!targetElement) {
+      indicatorRef.current = null;
       setDropIndicator(null);
       return;
     }
     
     // CRITICAL FIX: Calculate current cursor position, not initial drag position!
-    const currentY = (event.activatorEvent as MouseEvent).clientY + (event.delta?.y || 0);
-    const currentX = (event.activatorEvent as MouseEvent).clientX + (event.delta?.x || 0);
+    const baseEvent = event.activatorEvent as MouseEvent | TouchEvent | undefined;
+    let baseX = 0;
+    let baseY = 0;
+    if (baseEvent) {
+      if ('touches' in baseEvent && baseEvent.touches[0]) {
+        baseX = baseEvent.touches[0].clientX;
+        baseY = baseEvent.touches[0].clientY;
+      } else if ('clientX' in baseEvent) {
+        baseX = (baseEvent as MouseEvent).clientX;
+        baseY = (baseEvent as MouseEvent).clientY;
+      }
+    }
+    const currentY = baseY + (event.delta?.y || 0);
+    const currentX = baseX + (event.delta?.x || 0);
     
     
     // Calculate and set drop indicator
@@ -290,9 +298,15 @@ export function useXMLTreeDragDrop(
       targetElement, 
       targetId
     );
-    
-    setDropIndicator(indicator);
-  }, [activeId, isValidDropTarget, calculateDropPosition]);
+    // Throttle state updates with RAF to reduce rerenders
+    indicatorRef.current = indicator;
+    if (rafRef.current == null) {
+      rafRef.current = requestAnimationFrame(() => {
+        setDropIndicator(indicatorRef.current);
+        rafRef.current = null;
+      });
+    }
+  }, [activeId, isValidDropTarget, calculateDropPosition, indicatorRef, rafRef]);
   
   /**
    * Handle drag end - execute the move operation

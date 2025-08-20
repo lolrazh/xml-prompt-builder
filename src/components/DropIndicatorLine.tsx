@@ -26,20 +26,23 @@ const DropIndicatorLine: React.FC<DropIndicatorLineProps> = ({
     const right = position.x + position.width - (position.paddingRight ?? 0) - inset;
     const width = Math.max(0, right - left);
 
+    const top = Math.round(position.y) - 1;
+
     return {
       position: 'fixed',
       height: 2,
       backgroundColor: '#000',
-      borderRadius: 9999, // fully rounded ends
+      borderRadius: 9999,
       zIndex: 1000,
-      transition: 'opacity 120ms ease-out, left 80ms ease-out, width 80ms ease-out, top 80ms ease-out',
       pointerEvents: 'none',
-      left,
-      // Place exactly at the boundary between items; offset by 1px to center the 2px line
-      top: Math.round(position.y) - 1,
+      // Use transform for smoother, GPU-accelerated movement
+      left: 0,
+      top: 0,
       width,
       opacity: 1,
-      transform: 'none',
+      transform: `translate3d(${left}px, ${top}px, 0)`,
+      transition: 'transform 80ms ease-out, opacity 120ms ease-out',
+      willChange: 'transform, opacity, width',
     } as React.CSSProperties;
   };
 

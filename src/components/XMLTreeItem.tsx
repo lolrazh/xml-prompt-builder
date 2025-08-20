@@ -14,7 +14,6 @@ interface XMLTreeItemProps {
   element: FlatXMLElement;
   isSelected: boolean;
   isDragging: boolean;
-  isAnyDragActive: boolean;
   isValidDropTarget: boolean;
   isOverTarget: boolean;
   onElementClick: (element: FlatXMLElement) => void;
@@ -27,11 +26,10 @@ interface XMLTreeItemProps {
   style?: React.CSSProperties;
 }
 
-const XMLTreeItem: React.FC<XMLTreeItemProps> = ({
+const XMLTreeItemComponent: React.FC<XMLTreeItemProps> = ({
   element,
   isSelected,
   isDragging,
-  isAnyDragActive,
   isValidDropTarget,
   isOverTarget,
   onElementClick,
@@ -56,11 +54,12 @@ const XMLTreeItem: React.FC<XMLTreeItemProps> = ({
     animateLayoutChanges: () => false,
   });
 
-  // STATIONARY BEHAVIOR: No transforms for ANY element during drag operations
+  // Keep dnd-kit transforms for smooth GPU-accelerated movement
   const itemStyle = {
     ...style,
-    transform: isAnyDragActive ? 'none' : CSS.Transform.toString(transform),
-    transition: isAnyDragActive ? 'none' : transition,
+    transform: CSS.Transform.toString(transform),
+    transition,
+    willChange: transform ? 'transform' : undefined,
     opacity: isDragging ? 0.4 : 1, // Only the dragged element becomes transparent
   };
 
@@ -218,5 +217,26 @@ const XMLTreeItem: React.FC<XMLTreeItemProps> = ({
     </div>
   );
 };
+
+// Memoize to prevent re-renders of every item on each drag-over tick
+const propsAreEqual = (prev: XMLTreeItemProps, next: XMLTreeItemProps) => {
+  return (
+    prev.element === next.element &&
+    prev.isSelected === next.isSelected &&
+    prev.isDragging === next.isDragging &&
+    prev.isValidDropTarget === next.isValidDropTarget &&
+    prev.isOverTarget === next.isOverTarget &&
+    prev.onElementClick === next.onElementClick &&
+    prev.onAddChild === next.onAddChild &&
+    prev.onDelete === next.onDelete &&
+    prev.onToggleCollapse === next.onToggleCollapse &&
+    prev.onToggleVisibility === next.onToggleVisibility &&
+    prev.onMoveUp === next.onMoveUp &&
+    prev.onMoveDown === next.onMoveDown &&
+    prev.style === next.style
+  );
+};
+
+const XMLTreeItem = React.memo(XMLTreeItemComponent, propsAreEqual);
 
 export default XMLTreeItem;
