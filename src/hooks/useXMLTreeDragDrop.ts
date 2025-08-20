@@ -14,7 +14,7 @@ import type { XMLElement } from '@/components/PromptBuilder';
 
 // Drop indicator state - shows where element will be placed
 export interface DropIndicatorState {
-  type: 'before' | 'after' | 'child';
+  type: 'between' | 'nested';
   targetId: string;
   depth: number;
   position: {
@@ -22,9 +22,11 @@ export interface DropIndicatorState {
     y: number;
     width: number;
   };
-  // NEW: Store exact parent relationship for accurate dropping
+  // Store exact parent relationship for accurate dropping
   parentId?: string | null;
   ancestorIds?: string[];
+  // For styling: indented nested lines
+  indentOffset?: number;
 }
 
 // Main hook return type - everything you need for drag operations
@@ -70,83 +72,91 @@ export function useXMLTreeDragDrop(
   const isDragging = activeId !== null;
   
   /**
-   * Calculate discrete drop positions using STRUCTURE-DRIVEN logic (like Notion)
-   * FIXED: No cursor Y dependency, only structural relationships between elements
+   * Calculate drop positions using USER'S CLEAN LOGIC
+   * Between any two elements: "between" OR "nest under above element"
    */
   const getDiscreteDropPositions = useCallback((
     targetIndex: number,
-    relativeX: number, // Only X position matters for choosing between structural options
+    relativeX: number,
     targetElement: FlatXMLElement
-  ): Array<{ type: 'before' | 'after' | 'child', depth: number, parentId: string | null, ancestorIds: string[] }> => {
-    const positions = [];
+  ): Array<{ type: 'between' | 'nested', depth: number, parentId: string | null, ancestorIds: string[], indentOffset?: number }> => {
     const indentPerLevel = 24;
     const hoveredDepth = Math.max(0, Math.floor(relativeX / indentPerLevel));
     
-    // Get structural context - previous element determines valid positions
+    // Get the element above target (context for nesting decision)
     const prevElement = targetIndex > 0 ? flatElements[targetIndex - 1] : null;
     
-    // CORE RULE: 2 positions ONLY when prevElement.depth > targetElement.depth
-    // All other cases: exactly 1 position
-    
-    if (prevElement && prevElement.depth > targetElement.depth) {
-      // **THE ONLY CASE FOR 2 LINES**: Higher depth → Lower depth
-      // User can choose to stay at higher level OR drop to lower level
-      
-      // Option 1: Stay at previous element's depth (maintain nesting level)  
-      const prevParent = prevElement.parentId;
-      const prevAncestors = [...prevElement.ancestorIds];
-      positions.push({
-        type: 'before' as const,
-        depth: prevElement.depth,
-        parentId: prevParent,
-        ancestorIds: prevAncestors
-      });
-      
-      // Option 2: Drop to target element's depth (reduce nesting)
-      positions.push({
-        type: 'before' as const,
+    if (!prevElement) {
+      // No previous element - only "between" option at target's level
+      return [{
+        type: 'between' as const,
         depth: targetElement.depth,
         parentId: targetElement.parentId,
         ancestorIds: [...targetElement.ancestorIds]
-      });
+      }];
+    }
+    
+    // USER'S SMART RULES based on depth relationships:
+    
+    if (prevElement.depth < targetElement.depth) {
+      // Case: Lower depth → Higher depth (e.g., section → paragraph)
+      // Only nesting makes sense - it would get nested anyway
+      return [{
+        type: 'nested' as const,
+        depth: prevElement.depth + 1,
+        parentId: prevElement.id,
+        ancestorIds: [...prevElement.ancestorIds, prevElement.id],
+        indentOffset: indentPerLevel // Indented line to show nesting
+      }];
       
-      // Use cursor X position to choose between the two structural options
-      if (hoveredDepth >= prevElement.depth) {
-        // Cursor indented to higher depth → choose option 1
-        return [positions[0]];
-      } else {
-        // Cursor at lower depth → choose option 2  
-        return [positions[1]];
-      }
+    } else if (prevElement.depth > targetElement.depth) {
+      // Case: Higher depth → Lower depth (e.g., paragraph → section)  
+      // Two options: stay at top level OR drop to bottom level
+      
+      const option1 = {
+        type: 'between' as const,
+        depth: prevElement.depth,
+        parentId: prevElement.parentId,
+        ancestorIds: [...prevElement.ancestorIds]
+      };
+      
+      const option2 = {
+        type: 'between' as const,
+        depth: targetElement.depth,
+        parentId: targetElement.parentId,
+        ancestorIds: [...targetElement.ancestorIds]
+      };
+      
+      // Use cursor X to choose between options
+      return hoveredDepth >= prevElement.depth ? [option1] : [option2];
       
     } else {
-      // **ALL OTHER CASES**: Exactly 1 position
+      // Case: Same depth (e.g., section → section)
+      // Both options available: place between OR nest under above
       
-      // Check if cursor suggests child relationship
       if (hoveredDepth > targetElement.depth) {
-        // Cursor indented right → drop as child of target
-        positions.push({
-          type: 'child' as const,
-          depth: targetElement.depth + 1,
-          parentId: targetElement.id,
-          ancestorIds: [...targetElement.ancestorIds, targetElement.id]
-        });
+        // Cursor indented right → nest under above element
+        return [{
+          type: 'nested' as const,
+          depth: prevElement.depth + 1,
+          parentId: prevElement.id,
+          ancestorIds: [...prevElement.ancestorIds, prevElement.id],
+          indentOffset: indentPerLevel // Indented line to show nesting
+        }];
       } else {
-        // Default: drop before target at target's depth (sibling)
-        positions.push({
-          type: 'before' as const,
+        // Cursor at same level → place between elements
+        return [{
+          type: 'between' as const,
           depth: targetElement.depth,
           parentId: targetElement.parentId,
           ancestorIds: [...targetElement.ancestorIds]
-        });
+        }];
       }
     }
-    
-    return positions;
   }, [flatElements]);
 
   /**
-   * Calculate drop position - STRUCTURE-DRIVEN, FIXED Y POSITIONING
+   * Calculate drop position - SIMPLIFIED UI with consistent line styling
    */
   const calculateDropPosition = useCallback((
     clientY: number,
@@ -162,22 +172,15 @@ export function useXMLTreeDragDrop(
     const elementIndex = flatElements.findIndex(el => el.id === targetId);
     const relativeX = clientX - rect.left - 12; // 12px base padding
     
-    // FIXED: Get structural position (no relativeY dependency)
+    // Get the clean structural position using user's logic
     const positions = getDiscreteDropPositions(elementIndex, relativeX, flatElement);
     
     if (positions.length === 0) return null;
     
     const position = positions[0];
     
-    // FIXED: Consistent Y positioning - always at element boundary
-    let yPosition: number;
-    if (position.type === 'child') {
-      // Child drops: position slightly inside the element (75% down)
-      yPosition = rect.top + rect.height * 0.75;
-    } else {
-      // Before/after drops: always at the top edge (consistent positioning)
-      yPosition = rect.top;
-    }
+    // CONSISTENT Y POSITIONING: always at element top edge for clean appearance
+    const yPosition = rect.top;
     
     const result = {
       type: position.type,
@@ -188,16 +191,18 @@ export function useXMLTreeDragDrop(
         y: yPosition,
         width: rect.width
       },
-      // Store the calculated parent info for accurate dropping
+      // Store the exact parent info for accurate dropping
       parentId: position.parentId,
-      ancestorIds: position.ancestorIds
+      ancestorIds: position.ancestorIds,
+      // Store indent offset for nested line styling
+      indentOffset: position.indentOffset || 0
     };
     
-    console.log('✅ Fixed drop position:', {
+    console.log('✅ Clean drop position:', {
       type: position.type,
       depth: position.depth,
-      yPosition: yPosition - rect.top, // relative position for debugging
-      structural: !position.type.includes('cursor-based') // always true now
+      indented: position.indentOffset ? true : false,
+      parentId: position.parentId
     });
     
     return result;
@@ -322,8 +327,8 @@ export function useXMLTreeDragDrop(
       return;
     }
     
-    // Determine drop type from final indicator state
-    const finalDropType = dropIndicator?.type || 'after';
+    // Map new drop types to the expected format for moveElementInFlat  
+    const finalDropType = dropIndicator?.type === 'nested' ? 'child' : 'before';
     
     try {
       // FIXED: Use exact position data from drop indicator instead of calculating
@@ -447,18 +452,42 @@ function moveElementInFlat(
     }
   });
   
-  // Update the moved elements with new position data
+  // FIXED: Update the moved elements with correct ancestorIds for descendants
   const depthDifference = newPosition.newDepth - draggedElement.depth;
-  const updatedElementsToMove = elementsToMove.map(element => ({
-    ...element,
-    depth: element.depth + depthDifference,
-    parentId: element.id === draggedId ? newPosition.newParentId : element.parentId,
-    ancestorIds: element.id === draggedId 
-      ? newPosition.newAncestorIds 
-      : element.ancestorIds.map(ancestorId => 
-          ancestorId === draggedId ? newPosition.newParentId : ancestorId
-        ).filter(Boolean)
-  }));
+  const updatedElementsToMove = elementsToMove.map(element => {
+    if (element.id === draggedId) {
+      // For the moved element itself: use the calculated new position
+      return {
+        ...element,
+        depth: element.depth + depthDifference,
+        parentId: newPosition.newParentId,
+        ancestorIds: newPosition.newAncestorIds
+      };
+    } else {
+      // For descendants: rebuild full ancestor chain
+      const draggedIndex = element.ancestorIds.indexOf(draggedId);
+      let newAncestorIds;
+      
+      if (draggedIndex !== -1) {
+        // Rebuild: [new parent chain] + [moved parent] + [remaining original chain]
+        newAncestorIds = [
+          ...newPosition.newAncestorIds,                    // New parent's ancestor chain
+          draggedId,                                        // The moved parent itself  
+          ...element.ancestorIds.slice(draggedIndex + 1)    // Any ancestors below moved parent
+        ];
+      } else {
+        // Fallback: shouldn't happen, but keep original chain
+        newAncestorIds = element.ancestorIds;
+      }
+      
+      return {
+        ...element,
+        depth: element.depth + depthDifference,
+        parentId: element.parentId, // Parent relationship unchanged for descendants
+        ancestorIds: newAncestorIds
+      };
+    }
+  });
   
   // Insert the moved elements at the calculated position
   result.splice(insertIndex, 0, ...updatedElementsToMove);
