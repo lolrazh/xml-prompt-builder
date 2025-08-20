@@ -70,27 +70,39 @@ export function useXMLTreeDragDrop(
   const isDragging = activeId !== null;
   
   /**
-   * Calculate discrete drop positions like Notion - no ranges, just specific meaningful positions
+   * Calculate discrete drop positions using STRUCTURE-DRIVEN logic (like Notion)
+   * FIXED: No cursor Y dependency, only structural relationships between elements
    */
   const getDiscreteDropPositions = useCallback((
     targetIndex: number,
-    relativeY: number,
-    relativeX: number,
+    relativeX: number, // Only X position matters for choosing between structural options
     targetElement: FlatXMLElement
   ): Array<{ type: 'before' | 'after' | 'child', depth: number, parentId: string | null, ancestorIds: string[] }> => {
     const positions = [];
-    const baseIndent = 12;
     const indentPerLevel = 24;
     const hoveredDepth = Math.max(0, Math.floor(relativeX / indentPerLevel));
     
-    // Previous and next elements for context
+    // Get structural context - previous element determines valid positions
     const prevElement = targetIndex > 0 ? flatElements[targetIndex - 1] : null;
-    const nextElement = targetIndex < flatElements.length - 1 ? flatElements[targetIndex + 1] : null;
     
-    if (relativeY < 0.33) {
-      // TOP THIRD: "Before" target element
+    // CORE RULE: 2 positions ONLY when prevElement.depth > targetElement.depth
+    // All other cases: exactly 1 position
+    
+    if (prevElement && prevElement.depth > targetElement.depth) {
+      // **THE ONLY CASE FOR 2 LINES**: Higher depth → Lower depth
+      // User can choose to stay at higher level OR drop to lower level
       
-      // Position 1: Before target at target's depth (most common)
+      // Option 1: Stay at previous element's depth (maintain nesting level)  
+      const prevParent = prevElement.parentId;
+      const prevAncestors = [...prevElement.ancestorIds];
+      positions.push({
+        type: 'before' as const,
+        depth: prevElement.depth,
+        parentId: prevParent,
+        ancestorIds: prevAncestors
+      });
+      
+      // Option 2: Drop to target element's depth (reduce nesting)
       positions.push({
         type: 'before' as const,
         depth: targetElement.depth,
@@ -98,42 +110,21 @@ export function useXMLTreeDragDrop(
         ancestorIds: [...targetElement.ancestorIds]
       });
       
-      // Position 2: As child of previous element (if mouse is indented and previous can have children)
-      if (prevElement && hoveredDepth > targetElement.depth && hoveredDepth <= prevElement.depth + 1) {
-        positions.push({
-          type: 'child' as const,
-          depth: prevElement.depth + 1,
-          parentId: prevElement.id,
-          ancestorIds: [...prevElement.ancestorIds, prevElement.id]
-        });
-      }
-      
-    } else if (relativeY > 0.67) {
-      // BOTTOM THIRD: "After" target element
-      
-      // Position 1: After target at target's depth (most common)
-      positions.push({
-        type: 'after' as const,
-        depth: targetElement.depth,
-        parentId: targetElement.parentId,
-        ancestorIds: [...targetElement.ancestorIds]
-      });
-      
-      // Position 2: As child of target (if mouse is indented right)
-      if (hoveredDepth > targetElement.depth) {
-        positions.push({
-          type: 'child' as const,
-          depth: targetElement.depth + 1,
-          parentId: targetElement.id,
-          ancestorIds: [...targetElement.ancestorIds, targetElement.id]
-        });
+      // Use cursor X position to choose between the two structural options
+      if (hoveredDepth >= prevElement.depth) {
+        // Cursor indented to higher depth → choose option 1
+        return [positions[0]];
+      } else {
+        // Cursor at lower depth → choose option 2  
+        return [positions[1]];
       }
       
     } else {
-      // MIDDLE THIRD: Context-sensitive
+      // **ALL OTHER CASES**: Exactly 1 position
       
+      // Check if cursor suggests child relationship
       if (hoveredDepth > targetElement.depth) {
-        // Mouse indented right: child of target
+        // Cursor indented right → drop as child of target
         positions.push({
           type: 'child' as const,
           depth: targetElement.depth + 1,
@@ -141,7 +132,7 @@ export function useXMLTreeDragDrop(
           ancestorIds: [...targetElement.ancestorIds, targetElement.id]
         });
       } else {
-        // Mouse at same level or left: before target
+        // Default: drop before target at target's depth (sibling)
         positions.push({
           type: 'before' as const,
           depth: targetElement.depth,
@@ -151,12 +142,11 @@ export function useXMLTreeDragDrop(
       }
     }
     
-    // Return only the first position (most relevant)
-    return positions.slice(0, 1);
+    return positions;
   }, [flatElements]);
 
   /**
-   * Calculate drop position based on mouse coordinates and target element - FIXED VERSION
+   * Calculate drop position - STRUCTURE-DRIVEN, FIXED Y POSITIONING
    */
   const calculateDropPosition = useCallback((
     clientY: number,
@@ -165,7 +155,6 @@ export function useXMLTreeDragDrop(
     targetId: string
   ): DropIndicatorState | null => {
     const rect = targetElement.getBoundingClientRect();
-    const relativeY = (clientY - rect.top) / rect.height;
     const flatElement = flatElements.find(el => el.id === targetId);
     
     if (!flatElement) return null;
@@ -173,22 +162,21 @@ export function useXMLTreeDragDrop(
     const elementIndex = flatElements.findIndex(el => el.id === targetId);
     const relativeX = clientX - rect.left - 12; // 12px base padding
     
-    // Get the single most appropriate drop position
-    const positions = getDiscreteDropPositions(elementIndex, relativeY, relativeX, flatElement);
+    // FIXED: Get structural position (no relativeY dependency)
+    const positions = getDiscreteDropPositions(elementIndex, relativeX, flatElement);
     
     if (positions.length === 0) return null;
     
     const position = positions[0];
     
-    // Calculate Y position based on drop type
+    // FIXED: Consistent Y positioning - always at element boundary
     let yPosition: number;
-    if (position.type === 'before') {
-      yPosition = rect.top;
-    } else if (position.type === 'after') {
-      yPosition = rect.bottom;
-    } else {
-      // child - position in middle-bottom of element
+    if (position.type === 'child') {
+      // Child drops: position slightly inside the element (75% down)
       yPosition = rect.top + rect.height * 0.75;
+    } else {
+      // Before/after drops: always at the top edge (consistent positioning)
+      yPosition = rect.top;
     }
     
     const result = {
@@ -205,7 +193,13 @@ export function useXMLTreeDragDrop(
       ancestorIds: position.ancestorIds
     };
     
-    console.log('✅ Drop position result:', result);
+    console.log('✅ Fixed drop position:', {
+      type: position.type,
+      depth: position.depth,
+      yPosition: yPosition - rect.top, // relative position for debugging
+      structural: !position.type.includes('cursor-based') // always true now
+    });
+    
     return result;
   }, [flatElements, getDiscreteDropPositions]);
   
