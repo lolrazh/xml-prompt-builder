@@ -7,6 +7,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronRight, Plus, Trash, ArrowUp, ArrowDown, Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 import DragHandle from './DragHandle';
 import type { FlatXMLElement } from '@/lib/tree-conversion';
 
@@ -43,6 +44,7 @@ const XMLTreeItem: React.FC<XMLTreeItemProps> = ({
   onMoveDown,
   style
 }) => {
+  const isMobile = useIsMobile();
   
   const {
     attributes,
@@ -132,7 +134,7 @@ const XMLTreeItem: React.FC<XMLTreeItemProps> = ({
         
         {/* Show content preview if exists */}
         {element.content && (
-          <span className="text-xs text-gray-500 truncate max-w-[150px] font-normal ml-2">
+          <span className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-500 truncate max-w-[150px] font-normal ml-2`}>
             {element.content}
           </span>
         )}

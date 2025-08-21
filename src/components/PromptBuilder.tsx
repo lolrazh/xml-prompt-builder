@@ -526,7 +526,7 @@ const PromptBuilder: React.FC = () => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
       <Card className="p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.5)] border-2 border-black dark:border-gray-100 rounded-none bg-[#F2FCE2] dark:bg-gray-800">
-        <h2 className="text-xl font-bold mb-4 flex justify-between items-center border-b-2 border-black dark:border-gray-100 pb-2">
+        <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold mb-4 flex justify-between items-center border-b-2 border-black dark:border-gray-100 pb-2`}>
           <span className="font-black">Structure Builder</span>
           <div className={cn("flex items-center", isMobile ? "gap-1" : "gap-2")}>
             <input
@@ -567,7 +567,7 @@ const PromptBuilder: React.FC = () => {
         )}>
           {elements.length === 0 ? (
             <div className="text-center text-gray-400 text-sm">
-              <p>No elements yet. Add an element to begin building your prompt.</p>
+              <p className={isMobile ? 'text-xs' : 'text-sm'}>No elements yet. Add an element to begin building your prompt.</p>
             </div>
           ) : (
             <XMLTreeContainer 
@@ -596,17 +596,17 @@ const PromptBuilder: React.FC = () => {
             />
           ) : (
             <div className="text-center text-gray-400">
-              <p className="font-mono text-sm">Select an element to edit its properties.</p>
+              <p className={`font-mono ${isMobile ? 'text-xs' : 'text-sm'}`}>Select an element to edit its properties.</p>
             </div>
           )}
         </div>
       </Card>
       
       <Card className="p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.5)] border-2 border-black dark:border-gray-100 rounded-none bg-[#F2FCE2] dark:bg-gray-800">
-        <h2 className="text-xl font-bold mb-4 flex justify-between items-center border-b-2 border-black dark:border-gray-100 pb-2">
+        <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold mb-4 flex justify-between items-center border-b-2 border-black dark:border-gray-100 pb-2`}>
           <span className="font-black">XML Preview</span>
           <div className={cn("flex items-center", isMobile ? "gap-1" : "gap-3")}>
-            <span className="text-sm font-mono font-bold text-gray-600 dark:text-gray-400 pr-1">
+            <span className={`${isMobile ? 'text-xs' : 'text-sm'} font-mono font-bold text-gray-600 dark:text-gray-400 pr-1`}>
               ~{formatTokenCount(tokenCount)}
             </span>
             <ResponsiveButton 
@@ -624,7 +624,7 @@ const PromptBuilder: React.FC = () => {
           suppressContentEditableWarning
           data-placeholder="Paste XML here."
           className={cn(
-            "relative w-full min-h-[400px] max-h-[70vh] overflow-y-auto whitespace-pre-wrap font-mono text-sm bg-white dark:bg-gray-800 border-2 border-black dark:border-gray-100 rounded-none p-4",
+            `relative w-full min-h-[400px] max-h-[70vh] overflow-y-auto whitespace-pre-wrap font-mono ${isMobile ? 'text-xs' : 'text-sm'} bg-white dark:bg-gray-800 border-2 border-black dark:border-gray-100 rounded-none p-4`,
             elements.length === 0 ? "cursor-text" : "select-text",
             elements.length === 0 && !rawInput && "flex items-center justify-center",
             elements.length === 0 && isDragActive && "border-dashed bg-[#F2FCE2]"

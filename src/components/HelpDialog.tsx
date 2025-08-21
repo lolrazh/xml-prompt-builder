@@ -22,9 +22,9 @@ const HelpDialog: React.FC = () => {
       </DialogTrigger>
       <DialogContent className="border-2 border-black rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-[#F2FCE2]">
         <DialogHeader>
-          <DialogTitle className="text-xl font-black">How to Use XML Prompt Builder</DialogTitle>
+          <DialogTitle className={`${isMobile ? 'text-lg' : 'text-xl'} font-black`}>How to Use XML Prompt Builder</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 text-sm mt-2">
+        <div className={`space-y-4 ${isMobile ? 'text-xs' : 'text-sm'} mt-2`}>
           <div>
             <p className="font-bold mb-1">Getting Started:</p>
             <ul className="list-disc pl-5 space-y-1">
