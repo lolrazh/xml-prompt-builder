@@ -540,7 +540,7 @@ const PromptBuilder: React.FC = () => {
               onClick={onClickImport}
               size="sm"
               icon={<Upload className="h-4 w-4 stroke-[3]" />}
-              text="import"
+              text="Import"
               className="bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
             />
             <ResponsiveButton
@@ -548,14 +548,14 @@ const PromptBuilder: React.FC = () => {
               size="sm"
               disabled={!elements.length}
               icon={<Trash className="h-4 w-4 stroke-[3]" />}
-              text="clear"
+              text="Clear"
               className="bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
             />
             <ResponsiveButton 
               onClick={addNewElement} 
               size="sm" 
               icon={<Plus className="h-4 w-4 stroke-[3]" />}
-              text="add element"
+              text="Add Element"
               className="bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
             />
           </div>
