@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
+import { ResponsiveButton } from '@/components/ui/responsive-button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Trash, Plus, Copy, MoveVertical, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn, estimateTokenCount, formatTokenCount } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 import ElementEditor from './ElementEditor';
 import XMLTreeContainer from './XMLTreeContainer';
 import { looseParseXML } from '@/lib/loose-xml';
@@ -20,6 +22,7 @@ export interface XMLElement {
 
 const PromptBuilder: React.FC = () => {
   const STORAGE_KEY = 'xmlpb_elements_v1';
+  const isMobile = useIsMobile();
 
   const [elements, setElements] = useState<XMLElement[]>(() => {
     try {
@@ -521,11 +524,11 @@ const PromptBuilder: React.FC = () => {
 
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
       <Card className="p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.5)] border-2 border-black dark:border-gray-100 rounded-none bg-[#F2FCE2] dark:bg-gray-800">
         <h2 className="text-xl font-bold mb-4 flex justify-between items-center border-b-2 border-black dark:border-gray-100 pb-2">
           <span className="font-black">Structure Builder</span>
-          <div className="flex items-center gap-2">
+          <div className={cn("flex items-center", isMobile ? "gap-1" : "gap-2")}>
             <input
               ref={fileInputRef}
               type="file"
@@ -533,28 +536,28 @@ const PromptBuilder: React.FC = () => {
               className="hidden"
               onChange={onFileInputChange}
             />
-            <Button
+            <ResponsiveButton
               onClick={onClickImport}
               size="sm"
-              className="flex items-center gap-1 bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
-            >
-              <Upload className="h-4 w-4 stroke-[3]" /> import
-            </Button>
-            <Button
+              icon={<Upload className="h-4 w-4 stroke-[3]" />}
+              text="import"
+              className="bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
+            />
+            <ResponsiveButton
               onClick={clearAll}
               size="sm"
               disabled={!elements.length}
-              className="flex items-center gap-1 bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
-            >
-              <Trash className="h-4 w-4 stroke-[3]" /> clear
-            </Button>
-            <Button 
+              icon={<Trash className="h-4 w-4 stroke-[3]" />}
+              text="clear"
+              className="bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
+            />
+            <ResponsiveButton 
               onClick={addNewElement} 
               size="sm" 
-              className="flex items-center gap-1 bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
-            >
-              <Plus className="h-4 w-4 stroke-[3]" /> add element
-            </Button>
+              icon={<Plus className="h-4 w-4 stroke-[3]" />}
+              text="add element"
+              className="bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
+            />
           </div>
         </h2>
         
@@ -602,17 +605,17 @@ const PromptBuilder: React.FC = () => {
       <Card className="p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.5)] border-2 border-black dark:border-gray-100 rounded-none bg-[#F2FCE2] dark:bg-gray-800">
         <h2 className="text-xl font-bold mb-4 flex justify-between items-center border-b-2 border-black dark:border-gray-100 pb-2">
           <span className="font-black">XML Preview</span>
-          <div className="flex items-center gap-3">
+          <div className={cn("flex items-center", isMobile ? "gap-1" : "gap-3")}>
             <span className="text-sm font-mono font-bold text-gray-600 dark:text-gray-400 pr-1">
               ~{formatTokenCount(tokenCount)}
             </span>
-            <Button 
+            <ResponsiveButton 
               onClick={copyToClipboard} 
               size="sm" 
-              className="flex items-center gap-1 bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
-            >
-              <Copy className="h-4 w-4 stroke-[3]" /> Copy
-            </Button>
+              icon={<Copy className="h-4 w-4 stroke-[3]" />}
+              text="Copy"
+              className="bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
+            />
           </div>
         </h2>
         <pre
