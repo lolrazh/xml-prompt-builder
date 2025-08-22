@@ -43,7 +43,7 @@ export function createAuth(env: any) {
           httpOnly: false, // Allow client-side access for cross-domain
           secure: env.NODE_ENV === 'production',
           sameSite: env.NODE_ENV === 'production' ? "none" : "lax", // Allow cross-site in production
-          domain: env.NODE_ENV === 'production' ? ".xml.soy.run" : undefined, // Share cookies across xml.soy.run subdomains
+          domain: undefined,
         }
       }
     },
