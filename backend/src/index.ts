@@ -49,6 +49,32 @@ app.use('*', async (c, next) => {
   await next()
 })
 
+// Cross-domain OAuth initiation endpoint
+app.post('/api/auth/oauth/:provider', async (c) => {
+  const provider = c.req.param('provider')
+  const { redirectTo } = await c.req.json().catch(() => ({}))
+  
+  if (!['google', 'github'].includes(provider)) {
+    return c.json({ error: 'Invalid provider' }, 400)
+  }
+  
+  // Store the frontend origin for post-auth redirect
+  const frontendOrigin = redirectTo || c.req.header('origin') || 'https://xml-prompt-builder-import-patch.vercel.app'
+  
+  // Create OAuth URL with state containing the frontend origin
+  const auth = c.get('auth')
+  const state = btoa(JSON.stringify({ 
+    origin: frontendOrigin, 
+    timestamp: Date.now() 
+  }))
+  
+  const authUrl = provider === 'google' 
+    ? `https://accounts.google.com/o/oauth2/v2/auth?client_id=${c.env.GOOGLE_CLIENT_ID}&redirect_uri=https://xmb.soy.run/api/auth/callback/google&response_type=code&scope=email+profile&state=${state}`
+    : `https://github.com/login/oauth/authorize?client_id=${c.env.GITHUB_CLIENT_ID}&redirect_uri=https://xmb.soy.run/api/auth/callback/github&scope=user:email&state=${state}`
+  
+  return c.json({ authUrl })
+})
+
 // Better Auth API routes - handle all auth endpoints
 app.all('/api/auth/*', async (c) => {
   const auth = c.get('auth')
@@ -60,6 +86,35 @@ app.all('/api/auth/*', async (c) => {
   
   try {
     const response = await auth.handler(c.req.raw)
+    
+    // Handle OAuth callbacks - check for cross-domain redirect
+    if (c.req.path.includes('/callback/')) {
+      const requestUrl = new URL(c.req.url)
+      const state = requestUrl.searchParams.get('state')
+      
+      // If we have a state with cross-domain origin, redirect after successful auth
+      if (state && response.status === 302) {
+        try {
+          const { origin } = JSON.parse(atob(state))
+          
+          // Check if this is a cross-domain scenario
+          if (!origin.includes('.soy.run')) {
+            // Modify the redirect to go to our custom redirect handler
+            const location = response.headers.get('Location')
+            if (location) {
+              // Instead of the original redirect, go to our handler
+              const handlerUrl = new URL('/api/auth/redirect-with-token', 'https://xmb.soy.run')
+              handlerUrl.searchParams.set('origin', origin)
+              handlerUrl.searchParams.set('originalRedirect', location)
+              
+              return c.redirect(handlerUrl.toString())
+            }
+          }
+        } catch (error) {
+          console.error('OAuth callback processing error:', error)
+        }
+      }
+    }
     
     // Debug session data for get-session calls
     if (c.req.path.includes('get-session')) {
@@ -77,7 +132,98 @@ app.all('/api/auth/*', async (c) => {
   }
 })
 
-// Generate access token for cross-domain authentication
+// Handle cross-domain OAuth redirect with token
+app.get('/api/auth/redirect-with-token', async (c) => {
+  try {
+    const origin = c.req.query('origin')
+    const originalRedirect = c.req.query('originalRedirect')
+    
+    if (!origin) {
+      return c.json({ error: 'Missing origin parameter' }, 400)
+    }
+    
+    // Get current session (should be established after OAuth callback)
+    const auth = c.get('auth')
+    const session = await auth.api.getSession({
+      headers: c.req.raw.headers
+    })
+    
+    if (session?.user) {
+      // Generate temporary token
+      const jwtSecret = c.env.JWT_SECRET
+      const tempToken = await sign(
+        {
+          userId: session.user.id,
+          email: session.user.email,
+          name: session.user.name,
+          image: session.user.image,
+          exp: Math.floor(Date.now() / 1000) + 300, // 5 minutes
+          temp: true
+        },
+        jwtSecret as string
+      )
+      
+      // Redirect to frontend with token
+      const redirectUrl = new URL('/dashboard', origin)
+      redirectUrl.searchParams.set('token', tempToken)
+      
+      return c.redirect(redirectUrl.toString())
+    } else {
+      // No session, redirect to frontend login page
+      return c.redirect(new URL('/login', origin).toString())
+    }
+  } catch (error) {
+    console.error('Cross-domain redirect error:', error)
+    // Fallback redirect
+    const origin = c.req.query('origin')
+    return c.redirect(new URL('/login', origin || 'https://xml-prompt-builder-import-patch.vercel.app').toString())
+  }
+})
+
+// Exchange temporary token for permanent access token
+app.post('/api/auth/exchange-token', async (c) => {
+  try {
+    const { tempToken } = await c.req.json()
+    
+    if (!tempToken) {
+      return c.json({ error: 'Temporary token required' }, 400)
+    }
+    
+    const jwtSecret = c.env.JWT_SECRET
+    const payload = await verify(tempToken, jwtSecret as string) as any
+    
+    if (!payload.temp || !payload.userId || payload.exp < Math.floor(Date.now() / 1000)) {
+      return c.json({ error: 'Invalid or expired temporary token' }, 400)
+    }
+    
+    // Generate permanent access token
+    const accessToken = await sign(
+      {
+        userId: payload.userId,
+        email: payload.email,
+        exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60), // 7 days
+      },
+      jwtSecret as string
+    )
+    
+    return c.json({
+      access_token: accessToken,
+      expires_in: 7 * 24 * 60 * 60,
+      user: {
+        id: payload.userId,
+        email: payload.email,
+        name: payload.name || payload.email,
+        image: payload.image || null
+      }
+    })
+    
+  } catch (error) {
+    console.error('Token exchange error:', error)
+    return c.json({ error: 'Token exchange failed' }, 500)
+  }
+})
+
+// Generate access token for cross-domain authentication (existing session)
 app.post('/api/auth/token', async (c) => {
   const auth = c.get('auth')
   const session = await auth.api.getSession({

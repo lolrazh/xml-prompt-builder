@@ -29,7 +29,52 @@ export function useBetterAuth() {
   const session = authClient.useSession()
   const cached = useMemo(() => loadCachedUser(), []);
   const hasSavedOnceRef = useRef(false);
+  const hasProcessedTokenRef = useRef(false);
   const origin = window.location.origin;
+  
+  // Handle temporary token exchange on page load (for cross-domain auth)
+  useEffect(() => {
+    if (hasProcessedTokenRef.current) return;
+    
+    const handleTemporaryToken = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const tempToken = urlParams.get('token');
+      
+      if (tempToken) {
+        hasProcessedTokenRef.current = true;
+        try {
+          const result = await tokenManager.exchangeTemporaryToken(tempToken);
+          if (result) {
+            // Clear the token from URL
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.delete('token');
+            window.history.replaceState({}, document.title, newUrl.toString());
+            
+            // Store user data from token exchange
+            if (typeof result === 'object' && result.user) {
+              const cachedUser: CachedUser = {
+                id: result.user.id,
+                email: result.user.email,
+                firstName: result.user.name?.split(' ')[0] || null,
+                lastName: result.user.name?.split(' ').slice(1).join(' ') || null,
+                profilePictureUrl: result.user.image || null,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              };
+              saveCachedUser(cachedUser);
+            }
+            
+            // Force session refresh to pick up the new authentication state
+            session.refetch();
+          }
+        } catch (error) {
+          console.warn('Failed to exchange temporary token:', error);
+        }
+      }
+    };
+    
+    handleTemporaryToken();
+  }, []); // Only run once on mount
   
   // Debug logging
   useEffect(() => {
@@ -97,19 +142,31 @@ export function useBetterAuth() {
     await authClient.signOut();
   };
 
-  // Sign in with social providers
+  // Sign in with social providers - use cross-domain flow for non-soy.run domains
   const signInWithGoogle = async () => {
-    await authClient.signIn.social({
-      provider: "google",
-      callbackURL: origin + "/dashboard",
-    });
+    if (origin.includes('.soy.run')) {
+      // Same domain - use normal better-auth flow
+      await authClient.signIn.social({
+        provider: "google",
+        callbackURL: origin + "/dashboard",
+      });
+    } else {
+      // Cross-domain - use custom OAuth flow
+      await tokenManager.initiateCrossDomainAuth('google');
+    }
   };
 
   const signInWithGitHub = async () => {
-    await authClient.signIn.social({
-      provider: "github", 
-      callbackURL: origin + "/dashboard",
-    });
+    if (origin.includes('.soy.run')) {
+      // Same domain - use normal better-auth flow
+      await authClient.signIn.social({
+        provider: "github", 
+        callbackURL: origin + "/dashboard",
+      });
+    } else {
+      // Cross-domain - use custom OAuth flow
+      await tokenManager.initiateCrossDomainAuth('github');
+    }
   };
 
   return {

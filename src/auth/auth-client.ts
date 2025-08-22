@@ -91,6 +91,65 @@ export const tokenManager = {
     }
     
     return token
+  },
+
+  async exchangeTemporaryToken(tempToken: string): Promise<{ access_token: string; user?: any } | null> {
+    try {
+      const baseURL = import.meta.env.DEV ? "http://localhost:8787" : "https://xmb.soy.run"
+      const response = await fetch(`${baseURL}/api/auth/exchange-token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ tempToken })
+      })
+
+      if (!response.ok) {
+        console.warn('Failed to exchange temporary token:', response.status)
+        return null
+      }
+
+      const data = await response.json()
+      if (data.access_token && data.expires_in) {
+        this.setToken(data.access_token, data.expires_in)
+        return {
+          access_token: data.access_token,
+          user: data.user
+        }
+      }
+
+      return null
+    } catch (error) {
+      console.warn('Error exchanging temporary token:', error)
+      return null
+    }
+  },
+
+  async initiateCrossDomainAuth(provider: 'google' | 'github'): Promise<void> {
+    try {
+      const baseURL = import.meta.env.DEV ? "http://localhost:8787" : "https://xmb.soy.run"
+      const response = await fetch(`${baseURL}/api/auth/oauth/${provider}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          redirectTo: window.location.origin
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to initiate OAuth')
+      }
+
+      const data = await response.json()
+      if (data.authUrl) {
+        window.location.href = data.authUrl
+      }
+    } catch (error) {
+      console.error('Error initiating cross-domain auth:', error)
+      throw error
+    }
   }
 }
 
