@@ -23,7 +23,7 @@ const app = new Hono<{ Bindings: Env; Variables: Variables }>()
 // Configure CORS to allow requests from the frontend
 app.use('*', cors({
   origin: (origin) => {
-    const allowedOrigins = ['https://xml.soy.run', 'https://xmb.soy.run', 'http://localhost:8080', 'https://xml-prompt-builder-import-patch.vercel.app']
+    const allowedOrigins = ['https://xml.soy.run', 'https://xmb.soy.run', 'http://localhost:8080', 'https://xml-prompt-builder-import-patch.vercel.app', "https://xmlprompt.dev/"]
     return allowedOrigins.includes(origin || '') ? origin : null
   },
   allowHeaders: ['Content-Type', 'Authorization', 'Cookie'],
