@@ -108,7 +108,7 @@ const PromptCell: React.FC<{
 
   const handleCellClick = async () => {
     try {
-      const apiBase = import.meta.env.PROD ? 'https://backend.soyrun.workers.dev' : '';
+      const apiBase = import.meta.env.PROD ? 'https://xmb.soy.run' : '';
       const res = await authenticatedFetch(`${apiBase}/api/prompts/${id}`);
       if (!res.ok) throw new Error('Failed to fetch prompt');
       const data = await res.json();

@@ -361,6 +361,15 @@ const Index = () => {
             >
               by @lolrazh
             </a>
+            {" "}
+            <a
+              href="https://dub.sh/aryans-github"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium hover:underline"
+            >
+               and @aryankeluskar
+            </a>
           </p>
         </div>
       </footer>

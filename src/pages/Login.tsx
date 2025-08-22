@@ -37,6 +37,15 @@ const Login: React.FC = () => {
               >
                 by @lolrazh
               </a>
+              {" "}
+              <a
+                href="https://dub.sh/aryans-github"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium hover:underline"
+              >
+                and @aryankeluskar
+              </a>
             </p>
           </div>
         </footer>
@@ -77,6 +86,15 @@ const Login: React.FC = () => {
               className="font-medium hover:underline"
             >
               by @lolrazh
+            </a>
+            {" "}
+            <a
+              href="https://dub.sh/aryans-github"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium hover:underline"
+            >
+              and @aryankeluskar
             </a>
           </p>
         </div>
