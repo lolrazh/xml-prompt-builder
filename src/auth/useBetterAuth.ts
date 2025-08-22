@@ -151,8 +151,32 @@ export function useBetterAuth() {
         callbackURL: origin + "/dashboard",
       });
     } else {
-      // Cross-domain - use custom OAuth flow
-      await tokenManager.initiateCrossDomainAuth('google');
+      // Cross-domain - use popup-based OAuth flow
+      try {
+        const result = await tokenManager.initiateCrossDomainAuth('google');
+        if (result.success && result.user) {
+          // Store user data in cache for immediate UI update
+          const cachedUser: CachedUser = {
+            id: result.user.id,
+            email: result.user.email,
+            firstName: result.user.name?.split(' ')[0] || null,
+            lastName: result.user.name?.split(' ').slice(1).join(' ') || null,
+            profilePictureUrl: result.user.image || null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          saveCachedUser(cachedUser);
+          
+          // Force session refresh
+          session.refetch();
+        } else if (result.error) {
+          console.error('OAuth failed:', result.error);
+          throw new Error(result.error);
+        }
+      } catch (error) {
+        console.error('Google sign-in failed:', error);
+        throw error;
+      }
     }
   };
 
@@ -164,8 +188,32 @@ export function useBetterAuth() {
         callbackURL: origin + "/dashboard",
       });
     } else {
-      // Cross-domain - use custom OAuth flow
-      await tokenManager.initiateCrossDomainAuth('github');
+      // Cross-domain - use popup-based OAuth flow
+      try {
+        const result = await tokenManager.initiateCrossDomainAuth('github');
+        if (result.success && result.user) {
+          // Store user data in cache for immediate UI update
+          const cachedUser: CachedUser = {
+            id: result.user.id,
+            email: result.user.email,
+            firstName: result.user.name?.split(' ')[0] || null,
+            lastName: result.user.name?.split(' ').slice(1).join(' ') || null,
+            profilePictureUrl: result.user.image || null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          saveCachedUser(cachedUser);
+          
+          // Force session refresh
+          session.refetch();
+        } else if (result.error) {
+          console.error('OAuth failed:', result.error);
+          throw new Error(result.error);
+        }
+      } catch (error) {
+        console.error('GitHub sign-in failed:', error);
+        throw error;
+      }
     }
   };
 

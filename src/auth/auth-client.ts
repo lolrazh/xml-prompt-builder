@@ -125,31 +125,93 @@ export const tokenManager = {
     }
   },
 
-  async initiateCrossDomainAuth(provider: 'google' | 'github'): Promise<void> {
-    try {
-      const baseURL = import.meta.env.DEV ? "http://localhost:8787" : "https://xmb.soy.run"
-      const response = await fetch(`${baseURL}/api/auth/oauth/${provider}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          redirectTo: window.location.origin
+  async initiateCrossDomainAuth(provider: 'google' | 'github'): Promise<{ success: boolean; access_token?: string; user?: any; error?: string }> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const baseURL = import.meta.env.DEV ? "http://localhost:8787" : "https://xmb.soy.run"
+        const response = await fetch(`${baseURL}/api/auth/oauth/${provider}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            redirectTo: window.location.origin
+          })
         })
-      })
 
-      if (!response.ok) {
-        throw new Error('Failed to initiate OAuth')
-      }
+        if (!response.ok) {
+          throw new Error('Failed to initiate OAuth')
+        }
 
-      const data = await response.json()
-      if (data.authUrl) {
-        window.location.href = data.authUrl
+        const data = await response.json()
+        if (!data.authUrl) {
+          throw new Error('No auth URL received')
+        }
+
+        // Open OAuth in popup
+        const popup = window.open(
+          data.authUrl,
+          'oauth_popup',
+          'width=600,height=700,scrollbars=yes,resizable=yes'
+        )
+
+        if (!popup) {
+          throw new Error('Failed to open popup - please allow popups for this site')
+        }
+
+        // Listen for messages from popup
+        const handleMessage = (event: MessageEvent) => {
+          // Verify origin
+          if (event.origin !== window.location.origin && !event.origin.includes('xmb.soy.run')) {
+            return
+          }
+
+          console.log('Received message from OAuth popup:', event.data)
+
+          if (event.data.success && event.data.access_token) {
+            // Store the token
+            this.setToken(event.data.access_token, event.data.expires_in)
+            
+            // Clean up
+            window.removeEventListener('message', handleMessage)
+            popup.close()
+            
+            resolve({
+              success: true,
+              access_token: event.data.access_token,
+              user: event.data.user
+            })
+          } else if (event.data.error) {
+            // Clean up
+            window.removeEventListener('message', handleMessage)
+            popup.close()
+            
+            resolve({
+              success: false,
+              error: event.data.error
+            })
+          }
+        }
+
+        window.addEventListener('message', handleMessage)
+
+        // Handle popup closed manually
+        const checkClosed = setInterval(() => {
+          if (popup.closed) {
+            clearInterval(checkClosed)
+            window.removeEventListener('message', handleMessage)
+            resolve({
+              success: false,
+              error: 'Authentication cancelled'
+            })
+          }
+        }, 1000)
+
+      } catch (error) {
+        console.error('Error initiating cross-domain auth:', error)
+        reject(error)
       }
-    } catch (error) {
-      console.error('Error initiating cross-domain auth:', error)
-      throw error
-    }
+    })
   }
 }
 

@@ -75,71 +75,37 @@ app.post('/api/auth/oauth/:provider', async (c) => {
   return c.json({ authUrl })
 })
 
-// Better Auth API routes - handle all auth endpoints
-app.all('/api/auth/*', async (c) => {
-  const auth = c.get('auth')
-  
-  if (!auth) {
-    console.error('Auth object not found in context')
-    return c.json({ error: 'Auth not initialized' }, 500)
-  }
-  
-  try {
-    const response = await auth.handler(c.req.raw)
-    
-    // Handle OAuth callbacks - check for cross-domain redirect
-    if (c.req.path.includes('/callback/')) {
-      const requestUrl = new URL(c.req.url)
-      const state = requestUrl.searchParams.get('state')
-      
-      // If we have a state with cross-domain origin, redirect after successful auth
-      if (state && response.status === 302) {
-        try {
-          const { origin } = JSON.parse(atob(state))
-          
-          // Check if this is a cross-domain scenario
-          if (!origin.includes('.soy.run')) {
-            // Modify the redirect to go to our custom redirect handler
-            const location = response.headers.get('Location')
-            if (location) {
-              // Instead of the original redirect, go to our handler
-              const handlerUrl = new URL('/api/auth/redirect-with-token', 'https://xmb.soy.run')
-              handlerUrl.searchParams.set('origin', origin)
-              handlerUrl.searchParams.set('originalRedirect', location)
-              
-              return c.redirect(handlerUrl.toString())
-            }
-          }
-        } catch (error) {
-          console.error('OAuth callback processing error:', error)
-        }
-      }
-    }
-    
-    // Debug session data for get-session calls
-    if (c.req.path.includes('get-session')) {
-      const responseText = await response.clone().text()
-      console.log('Session response:', responseText)
-      const headers: Record<string, string> = {}
-      c.req.raw.headers.forEach((value, key) => { headers[key] = value })
-      console.log('Request headers:', headers)
-    }
-    
-    return response
-  } catch (error: any) {
-    console.error('Auth handler error:', error?.message || String(error))
-    return c.json({ error: 'Auth handler failed' }, 500)
-  }
-})
-
-// Handle cross-domain OAuth redirect with token
-app.get('/api/auth/redirect-with-token', async (c) => {
+// OAuth success page for popup-based authentication
+app.get('/api/auth/oauth-success', async (c) => {
   try {
     const origin = c.req.query('origin')
-    const originalRedirect = c.req.query('originalRedirect')
+    const state = c.req.query('state')
+    const error = c.req.query('error')
+    
+    console.log('OAuth success page called:', { origin, state, error })
     
     if (!origin) {
-      return c.json({ error: 'Missing origin parameter' }, 400)
+      return c.html(`
+        <script>
+          window.opener?.postMessage({ success: false, error: 'Missing origin parameter' }, '*');
+          window.close();
+        </script>
+      `)
+    }
+    
+    // Handle OAuth errors
+    if (error) {
+      console.warn('OAuth error in success page:', error)
+      return c.html(`
+        <script>
+          window.opener?.postMessage({ 
+            success: false, 
+            error: 'OAuth failed: ${error}' 
+          }, '${origin}');
+          window.close();
+        </script>
+        <div>Authentication failed: ${error}</div>
+      `)
     }
     
     // Get current session (should be established after OAuth callback)
@@ -148,39 +114,95 @@ app.get('/api/auth/redirect-with-token', async (c) => {
       headers: c.req.raw.headers
     })
     
+    console.log('Session in OAuth success:', { hasSession: !!session, userId: session?.user?.id })
+    
     if (session?.user) {
-      // Generate temporary token
+      // Generate access token
       const jwtSecret = c.env.JWT_SECRET
-      const tempToken = await sign(
+      const accessToken = await sign(
         {
           userId: session.user.id,
           email: session.user.email,
           name: session.user.name,
           image: session.user.image,
-          exp: Math.floor(Date.now() / 1000) + 300, // 5 minutes
-          temp: true
+          exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60), // 7 days
         },
         jwtSecret as string
       )
       
-      // Redirect to frontend with token
-      const redirectUrl = new URL('/dashboard', origin)
-      redirectUrl.searchParams.set('token', tempToken)
+      console.log('Generated access token, posting message to parent')
       
-      return c.redirect(redirectUrl.toString())
+      // Safely serialize user data
+      const userData = {
+        id: session.user.id,
+        email: session.user.email || '',
+        name: session.user.name || '',
+        image: session.user.image || null
+      }
+      
+      // Send token to parent window via postMessage
+      return c.html(`
+        <script>
+          try {
+            const authData = {
+              success: true,
+              access_token: "${accessToken}",
+              expires_in: ${7 * 24 * 60 * 60},
+              user: ${JSON.stringify(userData)}
+            };
+            
+            console.log('Posting auth success to parent:', authData);
+            window.opener?.postMessage(authData, '${origin}');
+          } catch (err) {
+            console.error('Error posting message:', err);
+            window.opener?.postMessage({ 
+              success: false, 
+              error: 'Failed to process authentication data' 
+            }, '${origin}');
+          }
+          setTimeout(() => window.close(), 1000);
+        </script>
+        <div style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
+          <h3>✅ Authentication successful!</h3>
+          <p>This window will close automatically...</p>
+        </div>
+      `)
     } else {
-      // No session, redirect to frontend login page
-      return c.redirect(new URL('/login', origin).toString())
+      console.warn('No session found in OAuth success')
+      return c.html(`
+        <script>
+          window.opener?.postMessage({ 
+            success: false, 
+            error: 'No session found' 
+          }, '${origin}');
+          setTimeout(() => window.close(), 1000);
+        </script>
+        <div style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
+          <h3>❌ Authentication failed</h3>
+          <p>No session found. Please try again.</p>
+        </div>
+      `)
     }
   } catch (error) {
-    console.error('Cross-domain redirect error:', error)
-    // Fallback redirect
-    const origin = c.req.query('origin')
-    return c.redirect(new URL('/login', origin || 'https://xml-prompt-builder-import-patch.vercel.app').toString())
+    console.error('OAuth success page error:', error)
+    const origin = c.req.query('origin') || '*'
+    return c.html(`
+      <script>
+        window.opener?.postMessage({ 
+          success: false, 
+          error: 'Authentication failed' 
+        }, '${origin}');
+        setTimeout(() => window.close(), 1000);
+      </script>
+      <div style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
+        <h3>❌ Authentication error</h3>
+        <p>An unexpected error occurred. Please try again.</p>
+      </div>
+    `)
   }
 })
 
-// Exchange temporary token for permanent access token
+// Exchange temporary token for permanent access token - MUST be before wildcard handler
 app.post('/api/auth/exchange-token', async (c) => {
   try {
     const { tempToken } = await c.req.json()
@@ -223,7 +245,7 @@ app.post('/api/auth/exchange-token', async (c) => {
   }
 })
 
-// Generate access token for cross-domain authentication (existing session)
+// Generate access token for cross-domain authentication (existing session) - MUST be before wildcard handler
 app.post('/api/auth/token', async (c) => {
   const auth = c.get('auth')
   const session = await auth.api.getSession({
@@ -255,6 +277,85 @@ app.post('/api/auth/token', async (c) => {
     return c.json({ error: 'Failed to generate token' }, 500)
   }
 })
+
+// Better Auth API routes - handle all auth endpoints
+app.all('/api/auth/*', async (c) => {
+  const auth = c.get('auth')
+  
+  if (!auth) {
+    console.error('Auth object not found in context')
+    return c.json({ error: 'Auth not initialized' }, 500)
+  }
+  
+  try {
+    const response = await auth.handler(c.req.raw)
+    
+    // Handle OAuth callbacks - check for cross-domain redirect to popup success page
+    if (c.req.path.includes('/callback/') && response.status === 302) {
+      const requestUrl = new URL(c.req.url)
+      const state = requestUrl.searchParams.get('state')
+      const error = requestUrl.searchParams.get('error')
+      
+      console.log('OAuth callback detected:', { 
+        path: c.req.path, 
+        status: response.status, 
+        hasState: !!state,
+        error,
+        location: response.headers.get('Location')
+      })
+      
+      // If we have a state parameter, check if this is cross-domain
+      if (state) {
+        try {
+          const { origin } = JSON.parse(atob(state))
+          
+          // Check if this is a cross-domain scenario (popup-based auth)
+          if (!origin.includes('.soy.run')) {
+            console.log('Cross-domain OAuth callback for origin:', origin)
+            
+            // If there's an OAuth error, redirect to error page
+            if (error) {
+              console.warn('OAuth error detected:', error)
+              const errorUrl = new URL('/api/auth/oauth-success', 'https://xmb.soy.run')
+              errorUrl.searchParams.set('origin', origin)
+              errorUrl.searchParams.set('error', error)
+              return c.redirect(errorUrl.toString())
+            }
+            
+            // For successful auth, redirect to success page instead of default redirect
+            const location = response.headers.get('Location')
+            console.log('Redirecting to popup success page instead of:', location)
+            
+            const successUrl = new URL('/api/auth/oauth-success', 'https://xmb.soy.run')
+            successUrl.searchParams.set('origin', origin)
+            successUrl.searchParams.set('state', state)
+            
+            return c.redirect(successUrl.toString())
+          }
+        } catch (error) {
+          console.error('OAuth callback state parsing error:', error)
+        }
+      }
+    }
+    
+    // Debug session data for get-session calls
+    if (c.req.path.includes('get-session')) {
+      const responseText = await response.clone().text()
+      console.log('Session response:', responseText)
+      const headers: Record<string, string> = {}
+      c.req.raw.headers.forEach((value, key) => { headers[key] = value })
+      console.log('Request headers:', headers)
+    }
+    
+    return response
+  } catch (error: any) {
+    console.error('Auth handler error:', error?.message || String(error))
+    return c.json({ error: 'Auth handler failed' }, 500)
+  }
+})
+
+
+
 
 // Auth middleware for protected routes
 app.use('/api/prompts/*', async (c, next) => {
