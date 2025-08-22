@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { authClient } from './auth-client';
+import { authClient, tokenManager } from './auth-client';
 import { clearCachedUser, clearAllAuthStorage, loadCachedUser, saveCachedUser, type CachedUser } from './auth-cache';
 
 export type DisplayUser = {
@@ -47,11 +47,18 @@ export function useBetterAuth() {
     if (session.data?.user) {
       saveCachedUser(toCachedUser(session.data.user));
       hasSavedOnceRef.current = true;
+      
+      // Proactively fetch access token for cross-domain auth
+      if (!tokenManager.getToken()) {
+        tokenManager.fetchToken().catch(console.warn);
+      }
     } else if (!session.isPending && !session.data?.user) {
       // Completed loading and no user -> clear cache to avoid stale data
       if (cached) {
         clearCachedUser();
       }
+      // Also clear tokens
+      tokenManager.clearToken();
     }
   }, [session.data?.user, session.isPending, cached]);
 
@@ -81,10 +88,11 @@ export function useBetterAuth() {
 
   const isHydratingFromCache = !session.data?.user && !!cached && session.isPending;
 
-  // Wrap signOut to clear cache immediately for snappy UI
+  // Wrap signOut to clear cache and tokens immediately for snappy UI
   const wrappedSignOut = async () => {
     try {
       clearCachedUser();
+      tokenManager.clearToken();
     } catch {}
     await authClient.signOut();
   };

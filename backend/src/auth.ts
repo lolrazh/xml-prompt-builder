@@ -20,12 +20,18 @@ export function createAuth(env: any) {
       google: {
         clientId: env.GOOGLE_CLIENT_ID || "",
         clientSecret: env.GOOGLE_CLIENT_SECRET || "",
-        redirect_uri: env.NODE_ENV === 'production' ? "https://xmb.soy.run/api/auth/callback/google" : "http://localhost:8787/api/auth/callback/google",
+        // Redirect to frontend domain for cross-domain auth
+        redirect_uri: env.NODE_ENV === 'production' 
+          ? "https://xmb.soy.run/api/auth/callback/google" 
+          : "http://localhost:8787/api/auth/callback/google",
       },
       github: {
         clientId: env.GITHUB_CLIENT_ID || "",
         clientSecret: env.GITHUB_CLIENT_SECRET || "",
-        redirect_uri: env.NODE_ENV === 'production' ? "https://xmb.soy.run/api/auth/callback/github" : "http://localhost:8787/api/auth/callback/github",
+        // Redirect to frontend domain for cross-domain auth
+        redirect_uri: env.NODE_ENV === 'production' 
+          ? "https://xmb.soy.run/api/auth/callback/github" 
+          : "http://localhost:8787/api/auth/callback/github",
       },
     },
     session: {

@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import type { D1Database } from '@cloudflare/workers-types'
 import { createAuth, type Auth } from './auth'
+import { sign, verify } from 'hono/jwt'
 
 export type Env = {
   DB: D1Database
@@ -9,6 +10,7 @@ export type Env = {
   GOOGLE_CLIENT_SECRET: string
   GITHUB_CLIENT_ID: string
   GITHUB_CLIENT_SECRET: string
+  JWT_SECRET?: string
 }
 
 type Variables = {
@@ -63,24 +65,102 @@ app.all('/api/auth/*', async (c) => {
     if (c.req.path.includes('get-session')) {
       const responseText = await response.clone().text()
       console.log('Session response:', responseText)
-      console.log('Request headers:', Object.fromEntries(c.req.raw.headers.entries()))
+      const headers: Record<string, string> = {}
+      c.req.raw.headers.forEach((value, key) => { headers[key] = value })
+      console.log('Request headers:', headers)
     }
     
     return response
-  } catch (error) {
-    console.error('Auth handler error:', error.message)
+  } catch (error: any) {
+    console.error('Auth handler error:', error?.message || String(error))
     return c.json({ error: 'Auth handler failed' }, 500)
   }
 })
 
-// Auth middleware for protected routes
-app.use('/api/prompts/*', async (c, next) => {
+// Generate access token for cross-domain authentication
+app.post('/api/auth/token', async (c) => {
   const auth = c.get('auth')
   const session = await auth.api.getSession({
     headers: c.req.raw.headers
   })
 
   if (!session) {
+    return c.json({ error: 'Unauthorized' }, 401)
+  }
+
+  try {
+    const jwtSecret = c.env.JWT_SECRET
+    const token = await sign(
+      {
+        userId: session.user.id,
+        email: session.user.email,
+        exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60), // 7 days
+      },
+      jwtSecret as string
+    )
+
+    return c.json({ 
+      access_token: token, 
+      expires_in: 7 * 24 * 60 * 60,
+      user: session.user 
+    })
+  } catch (error) {
+    console.error('Token generation error:', error)
+    return c.json({ error: 'Failed to generate token' }, 500)
+  }
+})
+
+// Auth middleware for protected routes
+app.use('/api/prompts/*', async (c, next) => {
+  const auth = c.get('auth')
+  
+  // Try session authentication first (cookies)
+  let session = await auth.api.getSession({
+    headers: c.req.raw.headers
+  })
+  
+  // If no session from cookies, try Authorization header with JWT
+  if (!session) {
+    const authHeader = c.req.header('Authorization')
+    if (authHeader?.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.substring(7)
+        const jwtSecret = c.env.JWT_SECRET
+        
+        // Verify JWT token
+        const payload = await verify(token, jwtSecret as string) as any
+        
+        if (payload.userId && payload.exp && payload.exp > Math.floor(Date.now() / 1000)) {
+          // Create a mock session-like object for compatibility
+          session = {
+            user: {
+              id: String(payload.userId),
+              email: String(payload.email || ''),
+              emailVerified: false,
+              name: String(payload.email || ''),
+              createdAt: new Date(),
+              updatedAt: new Date()
+            },
+            session: {
+              id: 'jwt-session',
+              userId: String(payload.userId),
+              expiresAt: new Date(payload.exp * 1000),
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              token: token
+            }
+          }
+        }
+      } catch (error) {
+        console.log('JWT verification failed:', error)
+      }
+    }
+  }
+
+  if (!session) {
+    const headers: Record<string, string> = {}
+    c.req.raw.headers.forEach((value, key) => { headers[key] = value })
+    console.log('No valid session found, headers:', headers)
     return c.json({ error: 'Unauthorized' }, 401)
   }
 
