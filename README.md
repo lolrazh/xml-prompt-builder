@@ -1,6 +1,8 @@
 
 # XML Prompt Builder
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/lolrazh/xml-prompt-builder)
+
 <div align="center">
   <img src="public/page.png" alt="XML Prompt Builder Logo" width="1000"/>
 </div>
