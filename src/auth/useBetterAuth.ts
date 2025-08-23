@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { authClient, tokenManager } from './auth-client';
 import { clearCachedUser, clearAllAuthStorage, loadCachedUser, saveCachedUser, type CachedUser } from './auth-cache';
 
@@ -32,16 +32,22 @@ export function useBetterAuth() {
   const hasProcessedTokenRef = useRef(false);
   const origin = window.location.origin;
   
-  // Handle temporary token exchange on page load (for cross-domain auth)
+  // Manual session state for cross-domain auth (when using JWT tokens)
+  const [manualUser, setManualUser] = useState<DisplayUser | null>(null);
+  const [manualLoading, setManualLoading] = useState(false);
+  
+  // Handle token-based authentication on page load
   useEffect(() => {
     if (hasProcessedTokenRef.current) return;
     
-    const handleTemporaryToken = async () => {
+    const handleTokenAuth = async () => {
+      // Check for temporary token in URL first
       const urlParams = new URLSearchParams(window.location.search);
       const tempToken = urlParams.get('token');
       
       if (tempToken) {
         hasProcessedTokenRef.current = true;
+        setManualLoading(true);
         try {
           const result = await tokenManager.exchangeTemporaryToken(tempToken);
           if (result) {
@@ -50,8 +56,19 @@ export function useBetterAuth() {
             newUrl.searchParams.delete('token');
             window.history.replaceState({}, document.title, newUrl.toString());
             
-            // Store user data from token exchange
+            // Set manual user state and cache
             if (typeof result === 'object' && result.user) {
+              const displayUserData: DisplayUser = {
+                id: result.user.id,
+                email: result.user.email,
+                name: result.user.name,
+                image: result.user.image,
+                emailVerified: false,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              };
+              setManualUser(displayUserData);
+              
               const cachedUser: CachedUser = {
                 id: result.user.id,
                 email: result.user.email,
@@ -63,18 +80,34 @@ export function useBetterAuth() {
               };
               saveCachedUser(cachedUser);
             }
-            
-            // Force session refresh to pick up the new authentication state
-            session.refetch();
           }
         } catch (error) {
           console.warn('Failed to exchange temporary token:', error);
+        } finally {
+          setManualLoading(false);
+        }
+      } else {
+        // Check if we have existing JWT tokens and cached user but no Better Auth session
+        hasProcessedTokenRef.current = true;
+        const token = tokenManager.getToken();
+        if (token && cached && !session.data?.user && !session.isPending) {
+          // Hydrate manual user state from cache
+          const displayUserData: DisplayUser = {
+            id: cached.id,
+            email: cached.email,
+            name: `${cached.firstName || ''} ${cached.lastName || ''}`.trim() || cached.email || '',
+            image: cached.profilePictureUrl,
+            emailVerified: false,
+            createdAt: cached.createdAt,
+            updatedAt: cached.updatedAt,
+          };
+          setManualUser(displayUserData);
         }
       }
     };
     
-    handleTemporaryToken();
-  }, []); // Only run once on mount
+    handleTokenAuth();
+  }, [cached, session.data?.user, session.isPending]); // React to cache and session changes
   
   // Debug logging
   useEffect(() => {
@@ -99,23 +132,33 @@ export function useBetterAuth() {
       }
     } else if (!session.isPending && !session.data?.user) {
       // Completed loading and no user -> clear cache to avoid stale data
-      if (cached) {
+      if (cached && !tokenManager.getToken()) {
+        // Only clear cache if we also don't have valid tokens
         clearCachedUser();
+        setManualUser(null);
       }
-      // Also clear tokens
-      tokenManager.clearToken();
+      // Clear tokens if no session
+      if (!tokenManager.getToken()) {
+        tokenManager.clearToken();
+      }
     }
   }, [session.data?.user, session.isPending, cached]);
 
   // Clean up cache when auth state changes
   useEffect(() => {
-    if (!session.isPending && !session.data?.user && cached) {
-      // If we're done loading and have no user but have cached data, clear it
+    if (!session.isPending && !session.data?.user && !tokenManager.getToken() && cached) {
+      // If we're done loading and have no session, no token, but have cached data, clear it
       clearCachedUser();
+      setManualUser(null);
     }
   }, [session.isPending, session.data?.user, cached]);
 
   const displayUser: DisplayUser | null = useMemo(() => {
+    // Priority: manual user (from JWT) > session user > cached user
+    if (manualUser) {
+      return manualUser;
+    }
+    
     const user = session.data?.user;
     if (user) {
       return {
@@ -129,9 +172,9 @@ export function useBetterAuth() {
       };
     }
     return cached ?? null;
-  }, [session.data?.user, cached]);
+  }, [manualUser, session.data?.user, cached]);
 
-  const isHydratingFromCache = !session.data?.user && !!cached && session.isPending;
+  const isHydratingFromCache = !session.data?.user && !manualUser && !!cached && (session.isPending || manualLoading);
 
   // Wrap signOut to clear cache and tokens immediately for snappy UI
   const wrappedSignOut = async () => {
@@ -160,7 +203,19 @@ export function useBetterAuth() {
       try {
         const result = await tokenManager.initiateCrossDomainAuth('google');
         if (result.success && result.user) {
-          // Store user data in cache for immediate UI update
+          // Set manual user state for immediate UI update
+          const displayUserData: DisplayUser = {
+            id: result.user.id,
+            email: result.user.email,
+            name: result.user.name,
+            image: result.user.image,
+            emailVerified: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          setManualUser(displayUserData);
+          
+          // Store user data in cache for persistence
           const cachedUser: CachedUser = {
             id: result.user.id,
             email: result.user.email,
@@ -171,9 +226,6 @@ export function useBetterAuth() {
             updatedAt: new Date().toISOString(),
           };
           saveCachedUser(cachedUser);
-          
-          // Force session refresh
-          session.refetch();
         } else if (result.error) {
           console.error('OAuth failed:', result.error);
           throw new Error(result.error);
@@ -202,7 +254,19 @@ export function useBetterAuth() {
       try {
         const result = await tokenManager.initiateCrossDomainAuth('github');
         if (result.success && result.user) {
-          // Store user data in cache for immediate UI update
+          // Set manual user state for immediate UI update
+          const displayUserData: DisplayUser = {
+            id: result.user.id,
+            email: result.user.email,
+            name: result.user.name,
+            image: result.user.image,
+            emailVerified: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          setManualUser(displayUserData);
+          
+          // Store user data in cache for persistence
           const cachedUser: CachedUser = {
             id: result.user.id,
             email: result.user.email,
@@ -213,9 +277,6 @@ export function useBetterAuth() {
             updatedAt: new Date().toISOString(),
           };
           saveCachedUser(cachedUser);
-          
-          // Force session refresh
-          session.refetch();
         } else if (result.error) {
           console.error('OAuth failed:', result.error);
           throw new Error(result.error);
@@ -229,7 +290,7 @@ export function useBetterAuth() {
 
   return {
     user: displayUser,
-    isLoading: session.isPending,
+    isLoading: session.isPending || manualLoading,
     error: session.error,
     signOut: wrappedSignOut,
     signInWithGoogle,
