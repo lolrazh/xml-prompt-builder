@@ -310,7 +310,8 @@ app.all('/api/auth/*', async (c) => {
           const { origin } = JSON.parse(atob(state))
           
           // Check if this is a cross-domain scenario (popup-based auth)
-          if (!origin.includes('.soy.run')) {
+          // Any domain not on the backend domain should use popup flow
+          if (!origin.includes('xmb.soy.run')) {
             console.log('Cross-domain OAuth callback for origin:', origin)
             
             // If there's an OAuth error, redirect to error page
@@ -419,6 +420,51 @@ app.use('/api/prompts/*', async (c, next) => {
 
 app.get('/', (c) => {
   return c.text('OK')
+})
+
+// Health check endpoint for debugging
+app.get('/api/health', (c) => {
+  const origin = c.req.header('origin')
+  return c.json({ 
+    status: 'ok', 
+    origin, 
+    cors: 'enabled',
+    timestamp: new Date().toISOString()
+  })
+})
+
+// Debug auth status endpoint
+app.get('/api/auth/debug', async (c) => {
+  const auth = c.get('auth')
+  const origin = c.req.header('origin')
+  
+  // Get session from cookies
+  const session = await auth.api.getSession({
+    headers: c.req.raw.headers
+  })
+  
+  // Check JWT token if no session
+  let jwtPayload = null
+  const authHeader = c.req.header('Authorization')
+  if (authHeader?.startsWith('Bearer ') && !session) {
+    try {
+      const token = authHeader.substring(7)
+      const jwtSecret = c.env.JWT_SECRET
+      jwtPayload = await verify(token, jwtSecret as string)
+    } catch (error) {
+      jwtPayload = { error: error.message }
+    }
+  }
+  
+  return c.json({
+    origin,
+    hasSession: !!session,
+    sessionUserId: session?.user?.id,
+    hasAuthHeader: !!authHeader,
+    jwtPayload,
+    cookies: c.req.header('cookie'),
+    timestamp: new Date().toISOString()
+  })
 })
 
 // List current user's prompts

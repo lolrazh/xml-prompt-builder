@@ -12,7 +12,7 @@ export function createAuth(env: any) {
       schema,
     }),
     baseURL: env.NODE_ENV === 'production' ? 'https://xmb.soy.run' : 'http://localhost:8787',
-    trustedOrigins: ['http://localhost:8080', 'https://xml.soy.run', 'https://xmb.soy.run', 'https://xml-prompt-builder-import-patch.vercel.app', "https://xmlprompt.dev/"],
+    trustedOrigins: ['http://localhost:8080', 'https://xml.soy.run', 'https://xmb.soy.run', 'https://xml-prompt-builder-import-patch.vercel.app', "https://xmlprompt.dev/", "https://xml-prompt-builder.pages.dev", "https://xml-prompt-builder-*.pages.dev"],
     emailAndPassword: {
       enabled: false, // Only OAuth for now
     },
@@ -47,9 +47,9 @@ export function createAuth(env: any) {
         name: "better-auth.session",
         options: {
           httpOnly: false, // Allow client-side access for cross-domain
-          secure: env.NODE_ENV === 'production',
-          sameSite: env.NODE_ENV === 'production' ? "none" : "lax", // Allow cross-site in production
-          domain: undefined,
+          secure: env.NODE_ENV === 'production', // Must be secure for sameSite: none in production
+          sameSite: env.NODE_ENV === 'production' ? "none" : "lax", // Cross-site in prod, lax in dev
+          domain: env.NODE_ENV === 'production' ? ".soy.run" : undefined, // Share across soy.run subdomains in production
         }
       }
     },

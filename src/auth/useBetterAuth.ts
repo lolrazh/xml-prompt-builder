@@ -142,9 +142,14 @@ export function useBetterAuth() {
     await authClient.signOut();
   };
 
-  // Sign in with social providers - use cross-domain flow for non-soy.run domains
+  // Sign in with social providers - use cross-domain flow for external domains
   const signInWithGoogle = async () => {
-    if (origin.includes('.soy.run')) {
+    // Check if we're on the same domain as the auth backend
+    const isBackendDomain = import.meta.env.DEV 
+      ? origin.includes('localhost:8080') || origin.includes('localhost:8787')
+      : origin.includes('xmb.soy.run');
+    
+    if (isBackendDomain) {
       // Same domain - use normal better-auth flow
       await authClient.signIn.social({
         provider: "google",
@@ -181,7 +186,12 @@ export function useBetterAuth() {
   };
 
   const signInWithGitHub = async () => {
-    if (origin.includes('.soy.run')) {
+    // Check if we're on the same domain as the auth backend
+    const isBackendDomain = import.meta.env.DEV 
+      ? origin.includes('localhost:8080') || origin.includes('localhost:8787')
+      : origin.includes('xmb.soy.run');
+    
+    if (isBackendDomain) {
       // Same domain - use normal better-auth flow
       await authClient.signIn.social({
         provider: "github", 

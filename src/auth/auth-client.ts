@@ -3,6 +3,10 @@ import { createAuthClient } from "better-auth/react"
 export const authClient = createAuthClient({
   baseURL: import.meta.env.DEV ? "http://localhost:8787" : "https://xmb.soy.run",
   credentials: "include",
+  fetchOptions: {
+    credentials: "include", // Always include credentials for session cookies
+    mode: "cors", // Enable CORS for cross-domain requests
+  },
   session: {
     storeHeaders: true,
     cookieName: "better-auth.session",
@@ -161,8 +165,10 @@ export const tokenManager = {
 
         // Listen for messages from popup
         const handleMessage = (event: MessageEvent) => {
-          // Verify origin
-          if (event.origin !== window.location.origin && !event.origin.includes('xmb.soy.run')) {
+          // Verify origin - allow messages from the auth backend or current domain
+          const allowedOrigins = [window.location.origin, 'https://xmb.soy.run', 'http://localhost:8787']
+          if (!allowedOrigins.some(origin => event.origin === origin || event.origin.includes('xmb.soy.run'))) {
+            console.warn('Rejecting message from unauthorized origin:', event.origin)
             return
           }
 
