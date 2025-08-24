@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { authClient, tokenManager } from './auth-client';
 import { clearCachedUser, clearAllAuthStorage, loadCachedUser, saveCachedUser, type CachedUser } from './auth-cache';
-import { useAuthContext } from './AuthContext';
 
 export type DisplayUser = {
   id?: string;
@@ -33,8 +32,9 @@ export function useBetterAuth() {
   const hasProcessedTokenRef = useRef(false);
   const origin = window.location.origin;
   
-  // Use global auth context for cross-domain auth state
-  const { manualUser, setManualUser, manualLoading, setManualLoading, clearManualAuth } = useAuthContext();
+  // Manual session state for cross-domain auth (when using JWT tokens)
+  const [manualUser, setManualUser] = useState<DisplayUser | null>(null);
+  const [manualLoading, setManualLoading] = useState(false);
   
   // Handle token-based authentication on page load
   useEffect(() => {
@@ -130,19 +130,28 @@ export function useBetterAuth() {
       if (!tokenManager.getToken()) {
         tokenManager.fetchToken().catch(console.warn);
       }
-    } else if (!session.isPending && !session.data?.user && !tokenManager.getToken()) {
-      // Completed loading, no session, and no tokens -> clear everything
-      clearManualAuth();
+    } else if (!session.isPending && !session.data?.user) {
+      // Completed loading and no user -> clear cache to avoid stale data
+      if (cached && !tokenManager.getToken()) {
+        // Only clear cache if we also don't have valid tokens
+        clearCachedUser();
+        setManualUser(null);
+      }
+      // Clear tokens if no session
+      if (!tokenManager.getToken()) {
+        tokenManager.clearToken();
+      }
     }
   }, [session.data?.user, session.isPending, cached]);
 
-  // Clean up when completely unauthenticated
+  // Clean up cache when auth state changes
   useEffect(() => {
-    if (!session.isPending && !session.data?.user && !tokenManager.getToken() && (cached || manualUser)) {
-      // If we're done loading and have no session, no token, but have auth data, clear it
-      clearManualAuth();
+    if (!session.isPending && !session.data?.user && !tokenManager.getToken() && cached) {
+      // If we're done loading and have no session, no token, but have cached data, clear it
+      clearCachedUser();
+      setManualUser(null);
     }
-  }, [session.isPending, session.data?.user, cached, manualUser, clearManualAuth]);
+  }, [session.isPending, session.data?.user, cached]);
 
   const displayUser: DisplayUser | null = useMemo(() => {
     // Priority: manual user (from JWT) > session user > cached user
@@ -170,7 +179,8 @@ export function useBetterAuth() {
   // Wrap signOut to clear cache and tokens immediately for snappy UI
   const wrappedSignOut = async () => {
     try {
-      clearManualAuth(); // Clear all manual auth state, cache, and tokens
+      clearCachedUser();
+      tokenManager.clearToken();
     } catch {}
     await authClient.signOut();
   };
@@ -203,7 +213,19 @@ export function useBetterAuth() {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           };
-          setManualUser(displayUserData); // Context will handle caching
+          setManualUser(displayUserData);
+          
+          // Store user data in cache for persistence
+          const cachedUser: CachedUser = {
+            id: result.user.id,
+            email: result.user.email,
+            firstName: result.user.name?.split(' ')[0] || null,
+            lastName: result.user.name?.split(' ').slice(1).join(' ') || null,
+            profilePictureUrl: result.user.image || null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          saveCachedUser(cachedUser);
         } else if (result.error) {
           console.error('OAuth failed:', result.error);
           throw new Error(result.error);
@@ -242,7 +264,19 @@ export function useBetterAuth() {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           };
-          setManualUser(displayUserData); // Context will handle caching
+          setManualUser(displayUserData);
+          
+          // Store user data in cache for persistence
+          const cachedUser: CachedUser = {
+            id: result.user.id,
+            email: result.user.email,
+            firstName: result.user.name?.split(' ')[0] || null,
+            lastName: result.user.name?.split(' ').slice(1).join(' ') || null,
+            profilePictureUrl: result.user.image || null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          saveCachedUser(cachedUser);
         } else if (result.error) {
           console.error('OAuth failed:', result.error);
           throw new Error(result.error);
