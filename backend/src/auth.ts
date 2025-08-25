@@ -35,22 +35,23 @@ export function createAuth(env: any) {
         enabled: true,
         maxAge: 60 * 60 * 24 * 7, // 7 days
       },
-    },
-    cookies: {
-      sessionToken: {
-        name: "better-auth.session",
-        options: {
-          httpOnly: false, // Allow client-side access for cross-domain
-          secure: env.NODE_ENV === 'production',
-          sameSite: env.NODE_ENV === 'production' ? "none" : "lax", // Allow cross-site in production
-          domain: env.NODE_ENV === 'production' ? ".xml.soy.run" : undefined, // Share cookies across xml.soy.run subdomains
-        }
-      }
+      // Enhanced settings for cross-domain compatibility
+      freshAge: 60 * 5, // 5 minutes - more frequent refresh for cross-domain
+      cookieName: "better-auth.session", // Consistent naming with client
     },
     advanced: {
       database: {
         generateId: () => crypto.randomUUID(),
       },
+      crossSubDomainCookies: {
+        enabled: true
+      },
+      defaultCookieAttributes: {
+        sameSite: "none",
+        secure: true,
+        httpOnly: false, // Allow client-side access for cross-domain auth
+        // Removed partitioned: true as it breaks cross-domain cookies
+      }  
     },
   })
 }
