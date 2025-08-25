@@ -22,18 +22,9 @@ const app = new Hono<{ Bindings: Env; Variables: Variables }>()
 
 // Configure CORS to allow requests from the frontend
 app.use('*', cors({
-  origin: (origin, c) => {
-    // Get allowed origins from environment variable or use defaults
-    const allowedOrigins = c?.env?.ALLOWED_ORIGINS 
-      ? c.env.ALLOWED_ORIGINS.split(',').map((o: string) => o.trim())
-      : ['https://xml.soy.run', 'https://xmb.soy.run', 'http://localhost:8080', 'https://xml-prompt-builder-import-patch.vercel.app'];
-    
-    // For development, allow any localhost origin
-    if (c?.env?.NODE_ENV !== 'production' && origin?.includes('localhost')) {
-      return origin;
-    }
-    
-    return allowedOrigins.includes(origin || '') ? origin : null;
+  origin: (origin) => {
+    const allowedOrigins = ['https://xml.soy.run', 'https://xmb.soy.run', 'http://localhost:8080', 'https://xml-prompt-builder-import-patch.vercel.app']
+    return allowedOrigins.includes(origin || '') ? origin : null
   },
   allowHeaders: ['Content-Type', 'Authorization', 'Cookie'],
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -72,14 +63,12 @@ app.all('/api/auth/*', async (c) => {
     if (c.req.path.includes('get-session')) {
       const responseText = await response.clone().text()
       console.log('Session response:', responseText)
-      // Note: Headers logged separately for debugging
-      console.log('Cookie header:', c.req.raw.headers.get('cookie'))
-      console.log('Authorization header:', c.req.raw.headers.get('authorization'))
+      console.log('Request headers:', Object.fromEntries(c.req.raw.headers.entries()))
     }
     
     return response
   } catch (error) {
-    console.error('Auth handler error:', error instanceof Error ? error.message : 'Unknown error')
+    console.error('Auth handler error:', error.message)
     return c.json({ error: 'Auth handler failed' }, 500)
   }
 })

@@ -89,18 +89,18 @@ export function useBetterAuth() {
     await authClient.signOut();
   };
 
-  // Sign in with social providers - dynamic callback URLs
+  // Sign in with social providers
   const signInWithGoogle = async () => {
     await authClient.signIn.social({
       provider: "google",
-      callbackURL: `${origin}/dashboard`,
+      callbackURL: origin == "https://xml-prompt-builder-import-patch.vercel.app" ? "https://xml-prompt-builder-import-patch.vercel.app/dashboard" : "https://xml.soy.run/dashboard",
     });
   };
 
   const signInWithGitHub = async () => {
     await authClient.signIn.social({
       provider: "github", 
-      callbackURL: `${origin}/dashboard`,
+      callbackURL: origin == "https://xml-prompt-builder-import-patch.vercel.app" ? "https://xml-prompt-builder-import-patch.vercel.app/dashboard" : "https://xml.soy.run/dashboard",
     });
   };
 
