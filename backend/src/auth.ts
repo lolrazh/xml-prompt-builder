@@ -49,21 +49,15 @@ export function createAuth(env: any) {
     session: {
       expiresIn: 60 * 60 * 24 * 7, // 7 days
       updateAge: 60 * 60 * 24, // 1 day
-      // Disable cookie-based sessions for cross-domain compatibility
       cookieCache: {
-        enabled: false,
+        enabled: true,
+        maxAge: 60 * 60 * 24 * 7, // 7 days
       },
     },
-    // Remove cookie dependency for cross-domain support
     cookies: {
       sessionToken: {
         name: "better-auth.session",
-        options: {
-          httpOnly: false, // Allow client-side access
-          secure: env.NODE_ENV === 'production',
-          sameSite: "none", // Allow cross-site requests
-          domain: undefined, // Don't restrict domain
-        }
+        options: cookieConfig
       }
     },
     advanced: {

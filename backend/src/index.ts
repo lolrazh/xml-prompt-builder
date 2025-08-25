@@ -2,7 +2,6 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import type { D1Database } from '@cloudflare/workers-types'
 import { createAuth, type Auth } from './auth'
-import { createJWT, verifyJWT, type JWTPayload } from './jwt-utils'
 
 export type Env = {
   DB: D1Database
@@ -10,11 +9,6 @@ export type Env = {
   GOOGLE_CLIENT_SECRET: string
   GITHUB_CLIENT_ID: string
   GITHUB_CLIENT_SECRET: string
-  JWT_SECRET: string
-  NODE_ENV: string
-  AUTH_BASE_URL?: string
-  ALLOWED_ORIGINS?: string
-  COOKIE_DOMAIN?: string
 }
 
 type Variables = {
@@ -62,65 +56,6 @@ app.use('*', async (c, next) => {
   await next()
 })
 
-// Custom JWT session endpoint for cross-domain support
-app.post('/api/auth/jwt-session', async (c) => {
-  const auth = c.get('auth')
-  
-  // First try to get session from Better Auth (after OAuth callback)
-  const session = await auth.api.getSession({
-    headers: c.req.raw.headers
-  })
-  
-  if (session?.user && session?.session) {
-    // Create JWT token for cross-domain use
-    const jwt = createJWT(
-      { 
-        userId: session.user.id, 
-        sessionId: session.session.id 
-      }, 
-      c.env.JWT_SECRET
-    )
-    
-    return c.json({ 
-      token: jwt,
-      user: session.user
-    })
-  }
-  
-  return c.json({ error: 'No active session' }, 401)
-})
-
-// JWT token verification endpoint
-app.get('/api/auth/verify-jwt', async (c) => {
-  const authHeader = c.req.header('Authorization')
-  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
-  
-  if (!token) {
-    return c.json({ error: 'No token provided' }, 401)
-  }
-  
-  const payload = verifyJWT(token, c.env.JWT_SECRET)
-  
-  if (!payload) {
-    return c.json({ error: 'Invalid token' }, 401)
-  }
-  
-  // Verify session still exists in database
-  const auth = c.get('auth')
-  const session = await auth.api.getSession({
-    headers: new Headers({ cookie: `better-auth.session=${payload.sessionId}` })
-  })
-  
-  if (!session) {
-    return c.json({ error: 'Session expired' }, 401)
-  }
-  
-  return c.json({ 
-    user: session.user,
-    sessionId: payload.sessionId
-  })
-})
-
 // Better Auth API routes - handle all auth endpoints
 app.all('/api/auth/*', async (c) => {
   const auth = c.get('auth')
@@ -149,33 +84,9 @@ app.all('/api/auth/*', async (c) => {
   }
 })
 
-// Auth middleware for protected routes - supports both session and JWT
+// Auth middleware for protected routes
 app.use('/api/prompts/*', async (c, next) => {
   const auth = c.get('auth')
-  
-  // Try JWT first (for cross-domain)
-  const authHeader = c.req.header('Authorization')
-  const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
-  
-  if (jwt) {
-    const payload = verifyJWT(jwt, c.env.JWT_SECRET)
-    if (payload) {
-      // Verify session still exists
-      const session = await auth.api.getSession({
-        headers: new Headers({ cookie: `better-auth.session=${payload.sessionId}` })
-      })
-      
-      if (session) {
-        c.set('userId', session.user.id)
-        c.set('user', session.user)
-        c.set('session', session.session)
-        await next()
-        return
-      }
-    }
-  }
-  
-  // Fall back to cookie-based session (for same-domain)
   const session = await auth.api.getSession({
     headers: c.req.raw.headers
   })

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { authClient, getJWTToken, setJWTToken, clearJWTToken, authenticatedFetch } from './auth-client';
+import { useEffect, useMemo, useRef } from 'react';
+import { authClient } from './auth-client';
 import { clearCachedUser, clearAllAuthStorage, loadCachedUser, saveCachedUser, type CachedUser } from './auth-cache';
 
 export type DisplayUser = {
@@ -30,63 +30,6 @@ export function useBetterAuth() {
   const cached = useMemo(() => loadCachedUser(), []);
   const hasSavedOnceRef = useRef(false);
   const origin = window.location.origin;
-  const [jwtUser, setJwtUser] = useState<any>(null);
-  const [isJwtLoading, setIsJwtLoading] = useState(true);
-  
-  // Try to get JWT token and verify it
-  useEffect(() => {
-    const verifyJWT = async () => {
-      const token = getJWTToken();
-      if (!token) {
-        setIsJwtLoading(false);
-        return;
-      }
-      
-      try {
-        const baseURL = import.meta.env.DEV ? "http://localhost:8787" : "https://xmb.soy.run";
-        const response = await authenticatedFetch(`${baseURL}/api/auth/verify-jwt`);
-        if (response.ok) {
-          const data = await response.json();
-          setJwtUser(data.user);
-        } else {
-          // Invalid token, clear it
-          clearJWTToken();
-        }
-      } catch (error) {
-        console.error('JWT verification failed:', error);
-        clearJWTToken();
-      } finally {
-        setIsJwtLoading(false);
-      }
-    };
-    
-    verifyJWT();
-  }, []);
-  
-  // Get JWT token after successful OAuth login
-  useEffect(() => {
-    const getJWTAfterLogin = async () => {
-      if (session.data?.user && !getJWTToken()) {
-        try {
-          const baseURL = import.meta.env.DEV ? "http://localhost:8787" : "https://xmb.soy.run";
-          const response = await fetch(`${baseURL}/api/auth/jwt-session`, {
-            method: 'POST',
-            credentials: 'include',
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            setJWTToken(data.token);
-            setJwtUser(data.user);
-          }
-        } catch (error) {
-          console.error('Failed to get JWT token:', error);
-        }
-      }
-    };
-    
-    getJWTAfterLogin();
-  }, [session.data?.user]);
   
   // Debug logging
   useEffect(() => {
@@ -121,20 +64,6 @@ export function useBetterAuth() {
   }, [session.isPending, session.data?.user, cached]);
 
   const displayUser: DisplayUser | null = useMemo(() => {
-    // Prefer JWT user for cross-domain compatibility
-    if (jwtUser) {
-      return {
-        id: jwtUser.id,
-        email: jwtUser.email,
-        name: jwtUser.name,
-        image: jwtUser.image,
-        emailVerified: jwtUser.emailVerified,
-        createdAt: jwtUser.createdAt ? jwtUser.createdAt.toString() : null,
-        updatedAt: jwtUser.updatedAt ? jwtUser.updatedAt.toString() : null,
-      };
-    }
-    
-    // Fall back to session user
     const user = session.data?.user;
     if (user) {
       return {
@@ -147,19 +76,15 @@ export function useBetterAuth() {
         updatedAt: user.updatedAt ? user.updatedAt.toString() : null,
       };
     }
-    
     return cached ?? null;
-  }, [jwtUser, session.data?.user, cached]);
+  }, [session.data?.user, cached]);
 
-  const isHydratingFromCache = !jwtUser && !session.data?.user && !!cached && (session.isPending || isJwtLoading);
-  const isLoading = session.isPending || isJwtLoading;
+  const isHydratingFromCache = !session.data?.user && !!cached && session.isPending;
 
-  // Wrap signOut to clear all auth data
+  // Wrap signOut to clear cache immediately for snappy UI
   const wrappedSignOut = async () => {
     try {
       clearCachedUser();
-      clearJWTToken();
-      setJwtUser(null);
     } catch {}
     await authClient.signOut();
   };
@@ -181,15 +106,13 @@ export function useBetterAuth() {
 
   return {
     user: displayUser,
-    isLoading,
+    isLoading: session.isPending,
     error: session.error,
     signOut: wrappedSignOut,
     signInWithGoogle,
     signInWithGitHub,
     isHydratingFromCache,
     refetch: session.refetch,
-    // Expose JWT token for API calls
-    getToken: getJWTToken,
   } as const;
 }
 
