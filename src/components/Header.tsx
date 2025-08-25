@@ -74,7 +74,19 @@ const Header: React.FC<HeaderProps> = ({ variant = 'index' }) => {
                     ) : (
                       // Pixelated question mark while loading or when no picture
                       <div className="h-full w-full">
-                          <img src="/question_pfp.jpeg" alt="Profile" className="h-full w-full object-cover" />
+                        <div className="h-full w-full bg-white">
+                          <div className="h-full w-full grid grid-cols-8 grid-rows-8">
+                            {Array.from({ length: 64 }).map((_, i) => {
+                              const row = Math.floor(i / 8);
+                              const col = i % 8;
+                              const on = QUESTION_MASK[row][col];
+                              return (
+                                // eslint-disable-next-line react/no-array-index-key
+                                <div key={i} className={on ? 'bg-gray-800' : 'bg-transparent'} style={{ imageRendering: 'pixelated' as any }} />
+                              );
+                            })}
+                          </div>
+                        </div>
                       </div>
                     )}
                   </button>
@@ -145,7 +157,19 @@ const Header: React.FC<HeaderProps> = ({ variant = 'index' }) => {
                     ) : (
                       // Pixelated question mark while loading or when no picture
                       <div className="h-full w-full">
-                        <img src="/question_pfp.jpeg" alt="Profile" className="h-full w-full object-cover" />
+                        <div className="h-full w-full bg-white">
+                          <div className="h-full w-full grid grid-cols-8 grid-rows-8">
+                            {Array.from({ length: 64 }).map((_, i) => {
+                              const row = Math.floor(i / 8);
+                              const col = i % 8;
+                              const on = QUESTION_MASK[row][col];
+                              return (
+                                // eslint-disable-next-line react/no-array-index-key
+                                <div key={i} className={on ? 'bg-gray-800' : 'bg-transparent'} style={{ imageRendering: 'pixelated' as any }} />
+                              );
+                            })}
+                          </div>
+                        </div>
                       </div>
                     )}
                   </button>
@@ -181,3 +205,17 @@ const Header: React.FC<HeaderProps> = ({ variant = 'index' }) => {
 };
 
 export default Header;
+
+
+
+const QUESTION_MASK: boolean[][] = [
+  [false, true,  true,  true,  true,  true,  false, false],
+  [true,  false, false, false, false, true,  false, false],
+  [false, false, false, true,  true,  true,  false, false],
+  [false, false, true,  false, false, true,  false, false],
+  [false, false, true,  true,  true,  false, false, false],
+  [false, false, false, false, true,  false, false, false],
+  [false, false, false, false, true,  false, false, false],
+  [false, false, false, false, true,  false, false, false],
+];
+

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { authClient, tokenManager } from './auth-client';
+import { useEffect, useMemo, useRef } from 'react';
+import { authClient } from './auth-client';
 import { clearCachedUser, clearAllAuthStorage, loadCachedUser, saveCachedUser, type CachedUser } from './auth-cache';
 
 export type DisplayUser = {
@@ -29,85 +29,7 @@ export function useBetterAuth() {
   const session = authClient.useSession()
   const cached = useMemo(() => loadCachedUser(), []);
   const hasSavedOnceRef = useRef(false);
-  const hasProcessedTokenRef = useRef(false);
   const origin = window.location.origin;
-  
-  // Manual session state for cross-domain auth (when using JWT tokens)
-  const [manualUser, setManualUser] = useState<DisplayUser | null>(null);
-  const [manualLoading, setManualLoading] = useState(false);
-  
-  // Handle token-based authentication on page load
-  useEffect(() => {
-    if (hasProcessedTokenRef.current) return;
-    
-    const handleTokenAuth = async () => {
-      // Check for temporary token in URL first
-      const urlParams = new URLSearchParams(window.location.search);
-      const tempToken = urlParams.get('token');
-      
-      if (tempToken) {
-        hasProcessedTokenRef.current = true;
-        setManualLoading(true);
-        try {
-          const result = await tokenManager.exchangeTemporaryToken(tempToken);
-          if (result) {
-            // Clear the token from URL
-            const newUrl = new URL(window.location.href);
-            newUrl.searchParams.delete('token');
-            window.history.replaceState({}, document.title, newUrl.toString());
-            
-            // Set manual user state and cache
-            if (typeof result === 'object' && result.user) {
-              const displayUserData: DisplayUser = {
-                id: result.user.id,
-                email: result.user.email,
-                name: result.user.name,
-                image: result.user.image,
-                emailVerified: false,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              };
-              setManualUser(displayUserData);
-              
-              const cachedUser: CachedUser = {
-                id: result.user.id,
-                email: result.user.email,
-                firstName: result.user.name?.split(' ')[0] || null,
-                lastName: result.user.name?.split(' ').slice(1).join(' ') || null,
-                profilePictureUrl: result.user.image || null,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              };
-              saveCachedUser(cachedUser);
-            }
-          }
-        } catch (error) {
-          console.warn('Failed to exchange temporary token:', error);
-        } finally {
-          setManualLoading(false);
-        }
-      } else {
-        // Check if we have existing JWT tokens and cached user but no Better Auth session
-        hasProcessedTokenRef.current = true;
-        const token = tokenManager.getToken();
-        if (token && cached && !session.data?.user && !session.isPending) {
-          // Hydrate manual user state from cache
-          const displayUserData: DisplayUser = {
-            id: cached.id,
-            email: cached.email,
-            name: `${cached.firstName || ''} ${cached.lastName || ''}`.trim() || cached.email || '',
-            image: cached.profilePictureUrl,
-            emailVerified: false,
-            createdAt: cached.createdAt,
-            updatedAt: cached.updatedAt,
-          };
-          setManualUser(displayUserData);
-        }
-      }
-    };
-    
-    handleTokenAuth();
-  }, [cached, session.data?.user, session.isPending]); // React to cache and session changes
   
   // Debug logging
   useEffect(() => {
@@ -125,40 +47,23 @@ export function useBetterAuth() {
     if (session.data?.user) {
       saveCachedUser(toCachedUser(session.data.user));
       hasSavedOnceRef.current = true;
-      
-      // Proactively fetch access token for cross-domain auth
-      if (!tokenManager.getToken()) {
-        tokenManager.fetchToken().catch(console.warn);
-      }
     } else if (!session.isPending && !session.data?.user) {
       // Completed loading and no user -> clear cache to avoid stale data
-      if (cached && !tokenManager.getToken()) {
-        // Only clear cache if we also don't have valid tokens
+      if (cached) {
         clearCachedUser();
-        setManualUser(null);
-      }
-      // Clear tokens if no session
-      if (!tokenManager.getToken()) {
-        tokenManager.clearToken();
       }
     }
   }, [session.data?.user, session.isPending, cached]);
 
   // Clean up cache when auth state changes
   useEffect(() => {
-    if (!session.isPending && !session.data?.user && !tokenManager.getToken() && cached) {
-      // If we're done loading and have no session, no token, but have cached data, clear it
+    if (!session.isPending && !session.data?.user && cached) {
+      // If we're done loading and have no user but have cached data, clear it
       clearCachedUser();
-      setManualUser(null);
     }
   }, [session.isPending, session.data?.user, cached]);
 
   const displayUser: DisplayUser | null = useMemo(() => {
-    // Priority: manual user (from JWT) > session user > cached user
-    if (manualUser) {
-      return manualUser;
-    }
-    
     const user = session.data?.user;
     if (user) {
       return {
@@ -172,125 +77,36 @@ export function useBetterAuth() {
       };
     }
     return cached ?? null;
-  }, [manualUser, session.data?.user, cached]);
+  }, [session.data?.user, cached]);
 
-  const isHydratingFromCache = !session.data?.user && !manualUser && !!cached && (session.isPending || manualLoading);
+  const isHydratingFromCache = !session.data?.user && !!cached && session.isPending;
 
-  // Wrap signOut to clear cache and tokens immediately for snappy UI
+  // Wrap signOut to clear cache immediately for snappy UI
   const wrappedSignOut = async () => {
     try {
       clearCachedUser();
-      tokenManager.clearToken();
     } catch {}
     await authClient.signOut();
   };
 
-  // Sign in with social providers - use cross-domain flow for external domains
+  // Sign in with social providers
   const signInWithGoogle = async () => {
-    // Check if we're on the same domain as the auth backend
-    const isBackendDomain = import.meta.env.DEV 
-      ? origin.includes('localhost:8080') || origin.includes('localhost:8787')
-      : origin.includes('xmb.soy.run');
-    
-    if (isBackendDomain) {
-      // Same domain - use normal better-auth flow
-      await authClient.signIn.social({
-        provider: "google",
-        callbackURL: origin + "/dashboard",
-      });
-    } else {
-      // Cross-domain - use popup-based OAuth flow
-      try {
-        const result = await tokenManager.initiateCrossDomainAuth('google');
-        if (result.success && result.user) {
-          // Set manual user state for immediate UI update
-          const displayUserData: DisplayUser = {
-            id: result.user.id,
-            email: result.user.email,
-            name: result.user.name,
-            image: result.user.image,
-            emailVerified: false,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-          setManualUser(displayUserData);
-          
-          // Store user data in cache for persistence
-          const cachedUser: CachedUser = {
-            id: result.user.id,
-            email: result.user.email,
-            firstName: result.user.name?.split(' ')[0] || null,
-            lastName: result.user.name?.split(' ').slice(1).join(' ') || null,
-            profilePictureUrl: result.user.image || null,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-          saveCachedUser(cachedUser);
-        } else if (result.error) {
-          console.error('OAuth failed:', result.error);
-          throw new Error(result.error);
-        }
-      } catch (error) {
-        console.error('Google sign-in failed:', error);
-        throw error;
-      }
-    }
+    await authClient.signIn.social({
+      provider: "google",
+      callbackURL: origin == "https://xml-prompt-builder-import-patch.vercel.app" ? "https://xml-prompt-builder-import-patch.vercel.app/dashboard" : "https://xml.soy.run/dashboard",
+    });
   };
 
   const signInWithGitHub = async () => {
-    // Check if we're on the same domain as the auth backend
-    const isBackendDomain = import.meta.env.DEV 
-      ? origin.includes('localhost:8080') || origin.includes('localhost:8787')
-      : origin.includes('xmb.soy.run');
-    
-    if (isBackendDomain) {
-      // Same domain - use normal better-auth flow
-      await authClient.signIn.social({
-        provider: "github", 
-        callbackURL: origin + "/dashboard",
-      });
-    } else {
-      // Cross-domain - use popup-based OAuth flow
-      try {
-        const result = await tokenManager.initiateCrossDomainAuth('github');
-        if (result.success && result.user) {
-          // Set manual user state for immediate UI update
-          const displayUserData: DisplayUser = {
-            id: result.user.id,
-            email: result.user.email,
-            name: result.user.name,
-            image: result.user.image,
-            emailVerified: false,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-          setManualUser(displayUserData);
-          
-          // Store user data in cache for persistence
-          const cachedUser: CachedUser = {
-            id: result.user.id,
-            email: result.user.email,
-            firstName: result.user.name?.split(' ')[0] || null,
-            lastName: result.user.name?.split(' ').slice(1).join(' ') || null,
-            profilePictureUrl: result.user.image || null,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-          saveCachedUser(cachedUser);
-        } else if (result.error) {
-          console.error('OAuth failed:', result.error);
-          throw new Error(result.error);
-        }
-      } catch (error) {
-        console.error('GitHub sign-in failed:', error);
-        throw error;
-      }
-    }
+    await authClient.signIn.social({
+      provider: "github", 
+      callbackURL: origin == "https://xml-prompt-builder-import-patch.vercel.app" ? "https://xml-prompt-builder-import-patch.vercel.app/dashboard" : "https://xml.soy.run/dashboard",
+    });
   };
 
   return {
     user: displayUser,
-    isLoading: session.isPending || manualLoading,
+    isLoading: session.isPending,
     error: session.error,
     signOut: wrappedSignOut,
     signInWithGoogle,
