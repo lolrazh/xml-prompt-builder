@@ -18,13 +18,56 @@ function getAuthBaseURL(): string {
 
 export const authClient = createAuthClient({
   baseURL: getAuthBaseURL(),
-  credentials: "include",
+  credentials: "include", // Still need for OAuth callbacks
   session: {
-    storeHeaders: true,
+    storage: "localStorage",
+    fetchOnWindowFocus: true,
     cookieName: "better-auth.session",
-    storage: "localStorage", // Use localStorage for cross-domain support
-    fetchOnWindowFocus: true, // Refetch session when window gains focus
+    storeHeaders: true,
   },
 })
+
+// JWT token management
+const JWT_TOKEN_KEY = 'xml-prompt-builder-jwt';
+
+export function getJWTToken(): string | null {
+  try {
+    return localStorage.getItem(JWT_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setJWTToken(token: string): void {
+  try {
+    localStorage.setItem(JWT_TOKEN_KEY, token);
+  } catch {
+    // ignore
+  }
+}
+
+export function clearJWTToken(): void {
+  try {
+    localStorage.removeItem(JWT_TOKEN_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+// Enhanced fetch that includes JWT token
+export async function authenticatedFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const token = getJWTToken();
+  
+  const headers = new Headers(options.headers);
+  
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+  
+  return fetch(url, {
+    ...options,
+    headers,
+  });
+}
 
 export type AuthClient = typeof authClient
