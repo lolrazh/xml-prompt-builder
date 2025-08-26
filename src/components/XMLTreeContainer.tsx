@@ -45,6 +45,7 @@ const XMLTreeContainer: React.FC<XMLTreeContainerProps> = ({
     draggedElement,
     dropIndicator,
     isDragging,
+    isDuplicateMode,
     handleDragStart,
     handleDragOver,
     handleDragEnd,
@@ -115,6 +116,7 @@ const XMLTreeContainer: React.FC<XMLTreeContainerProps> = ({
                 isAnyDragActive={isDragging}
                 isValidDropTarget={isValidDropTarget(flatElement.id)}
                 isOverTarget={dropIndicator?.targetId === flatElement.id}
+                isDuplicateMode={isDuplicateMode}
                 onElementClick={handleElementClick}
                 onAddChild={onAddChild}
                 onDelete={onDelete}
@@ -149,7 +151,7 @@ const XMLTreeContainer: React.FC<XMLTreeContainerProps> = ({
       {/* Ghost element that follows cursor */}
       <DragOverlay>
         {draggedElement && (
-          <XMLTreeGhost element={draggedElement} />
+          <XMLTreeGhost element={draggedElement} isDuplicateMode={isDuplicateMode} />
         )}
       </DragOverlay>
       

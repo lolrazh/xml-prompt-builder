@@ -1,7 +1,8 @@
 // XML Tree Drag & Drop Hook - The Brain of Our Drag System
 // Clean, predictable, and absolutely rock-solid
+// Now with duplication support via Option key
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { DragStartEvent, DragOverEvent, DragEndEvent } from '@dnd-kit/core';
 import { 
   treeToFlat, 
@@ -10,6 +11,7 @@ import {
   calculateNewPosition,
   type FlatXMLElement 
 } from '@/lib/tree-conversion';
+import { duplicateXMLElement } from '@/lib/utils';
 import type { XMLElement } from '@/components/PromptBuilder';
 
 // Drop indicator state - shows where element will be placed
@@ -38,6 +40,7 @@ export interface UseXMLTreeDragDropReturn {
   draggedElement: FlatXMLElement | null;
   dropIndicator: DropIndicatorState | null;
   isDragging: boolean;
+  isDuplicateMode: boolean; // Option key held during drag
   
   // Event handlers for DndContext
   handleDragStart: (event: DragStartEvent) => void;
@@ -70,6 +73,7 @@ export function useXMLTreeDragDrop(
   // Drag state management
   const [activeId, setActiveId] = useState<string | null>(null);
   const [dropIndicator, setDropIndicator] = useState<DropIndicatorState | null>(null);
+  const [isDuplicateMode, setIsDuplicateMode] = useState<boolean>(false);
   
   // Derived state
   const draggedElement = useMemo(() => 
@@ -78,6 +82,34 @@ export function useXMLTreeDragDrop(
   );
   
   const isDragging = activeId !== null;
+
+  // Track Option key state during drag
+  useEffect(() => {
+    if (!isDragging) {
+      setIsDuplicateMode(false);
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.altKey) { // altKey is the Option key on Mac and Alt key on PC
+        setIsDuplicateMode(true);
+      }
+    };
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (!event.altKey) {
+        setIsDuplicateMode(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [isDragging]);
   
   /**
    * Drop Depth Rules (Previous-Item Logic)
@@ -295,14 +327,18 @@ export function useXMLTreeDragDrop(
   }, [activeId, isValidDropTarget, calculateDropPosition]);
   
   /**
-   * Handle drag end - execute the move operation
+   * Handle drag end - execute the move or duplicate operation
    */
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     
+    // Store duplication state before clearing drag state
+    const shouldDuplicate = isDuplicateMode;
+    
     // Clear drag state
     setActiveId(null);
     setDropIndicator(null);
+    setIsDuplicateMode(false);
     
     // Validate drop
     if (!over || !active || active.id === over.id) {
@@ -326,6 +362,92 @@ export function useXMLTreeDragDrop(
       'before';
     
     try {
+      // Handle duplication mode
+      if (shouldDuplicate) {
+        console.log('🎯 Duplicating element:', { draggedId, targetId });
+        
+        // Find the original element in the tree structure
+        const findElementInTree = (elements: XMLElement[], id: string): XMLElement | null => {
+          for (const element of elements) {
+            if (element.id === id) {
+              return element;
+            }
+            if (element.children.length > 0) {
+              const found = findElementInTree(element.children, id);
+              if (found) return found;
+            }
+          }
+          return null;
+        };
+
+        const originalElement = findElementInTree(elements, draggedId);
+        if (!originalElement) {
+          console.error('❌ Original element not found for duplication');
+          return;
+        }
+
+        // Create a duplicate with new IDs
+        const duplicatedElement = duplicateXMLElement(originalElement);
+        
+        // Insert the duplicate at the target position
+        let newTreeElements = [...elements];
+        
+        // Special case: dropping at the end
+        if (targetId === '__end__') {
+          newTreeElements.push(duplicatedElement);
+        } else {
+          // Convert to flat, insert duplicate, convert back to tree
+          const duplicateAsFlat = treeToFlat([duplicatedElement]);
+          const targetElement = allFlatElements.find(el => el.id === targetId);
+          
+          if (!targetElement) {
+            console.error('❌ Target element not found for duplication');
+            return;
+          }
+
+          // Calculate position for duplicate
+          let newPosition;
+          if (dropIndicator && dropIndicator.parentId !== undefined && dropIndicator.ancestorIds !== undefined) {
+            newPosition = {
+              newDepth: dropIndicator.depth,
+              newParentId: dropIndicator.parentId,
+              newAncestorIds: dropIndicator.ancestorIds
+            };
+          } else {
+            newPosition = {
+              newDepth: targetElement.depth,
+              newParentId: targetElement.parentId,
+              newAncestorIds: [...targetElement.ancestorIds]
+            };
+          }
+
+          // Update duplicate element with correct positioning
+          const updatedDuplicate = duplicateAsFlat.map(element => ({
+            ...element,
+            depth: element.depth - duplicateAsFlat[0].depth + newPosition.newDepth,
+            parentId: element === duplicateAsFlat[0] ? newPosition.newParentId : element.parentId,
+            ancestorIds: element === duplicateAsFlat[0] ? 
+              newPosition.newAncestorIds : 
+              [...newPosition.newAncestorIds, ...element.ancestorIds.slice(1)]
+          }));
+
+          // Insert into flat array
+          const finalDropType = 
+            dropIndicator?.type === 'nested' ? 'child' : 
+            dropIndicator?.type === 'first-child' ? 'first-child' : 
+            'before';
+
+          const updatedFlat = insertElementsInFlat(allFlatElements, updatedDuplicate, targetId, finalDropType);
+          newTreeElements = flatToTree(updatedFlat);
+        }
+        
+        onElementsChange(newTreeElements);
+        console.log('✅ Duplication completed:', { originalId: draggedId, newId: duplicatedElement.id });
+        return;
+      }
+
+      // Original move logic continues below...
+      
       // Special case: dropping at the end -> treat as AFTER last element, matching last element's depth/parent
       if (targetId === '__end__') {
         const last = flatElements[flatElements.length - 1];
@@ -378,7 +500,7 @@ export function useXMLTreeDragDrop(
     } catch (error) {
       console.error('❌ Move operation failed:', error);
     }
-  }, [allFlatElements, flatElements, dropIndicator, canDrop, onElementsChange]);
+  }, [allFlatElements, flatElements, dropIndicator, canDrop, onElementsChange, isDuplicateMode, elements]);
   
   return {
     // State
@@ -386,6 +508,7 @@ export function useXMLTreeDragDrop(
     draggedElement,
     dropIndicator,
     isDragging,
+    isDuplicateMode,
     
     // Handlers
     handleDragStart,
@@ -660,6 +783,52 @@ function findLastChildIndex(flatElements: FlatXMLElement[], parentId: string): n
   });
   
   return lastChildIndex;
+}
+
+/**
+ * Insert elements into flat array at target position (for duplication)
+ */
+function insertElementsInFlat(
+  flatElements: FlatXMLElement[],
+  elementsToInsert: FlatXMLElement[],
+  targetId: string,
+  dropType: 'before' | 'after' | 'child' | 'first-child'
+): FlatXMLElement[] {
+  const targetIndex = flatElements.findIndex(el => el.id === targetId);
+  if (targetIndex === -1) {
+    throw new Error('Target element not found in flat array');
+  }
+  
+  let insertIndex: number;
+  
+  switch (dropType) {
+    case 'before':
+      insertIndex = targetIndex;
+      break;
+    case 'after':
+      insertIndex = targetIndex + 1;
+      break;
+    case 'first-child':
+      // Insert immediately after the parent
+      insertIndex = targetIndex + 1;
+      break;
+    case 'child':
+      // Insert after the last child of target element
+      const lastChildIndex = findLastChildIndex(flatElements, targetId);
+      insertIndex = lastChildIndex + 1;
+      break;
+    default:
+      throw new Error(`Invalid drop type: ${dropType}`);
+  }
+  
+  // Create a copy of the flat array
+  const result = [...flatElements];
+  
+  // Insert the new elements
+  result.splice(insertIndex, 0, ...elementsToInsert);
+  
+  // Recalculate order values for all elements
+  return recalculateOrderValues(result);
 }
 
 /**

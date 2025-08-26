@@ -52,3 +52,22 @@ export function generateUUID(): string {
     return v.toString(16);
   });
 }
+
+// Generate element ID using timestamp pattern (consistent with existing pattern)
+export function generateElementId(): string {
+  return `element-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
+// Deep clone XMLElement and assign new unique IDs to all elements in the tree
+export function duplicateXMLElement(element: any): any {
+  const duplicateRecursive = (el: any): any => {
+    const newId = generateElementId();
+    return {
+      ...el,
+      id: newId,
+      children: el.children && el.children.length > 0 ? el.children.map(duplicateRecursive) : []
+    };
+  };
+  
+  return duplicateRecursive(element);
+}

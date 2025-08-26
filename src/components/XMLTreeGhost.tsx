@@ -7,11 +7,13 @@ import type { FlatXMLElement } from '@/lib/tree-conversion';
 
 interface XMLTreeGhostProps {
   element: FlatXMLElement;
+  isDuplicateMode?: boolean;
   className?: string;
 }
 
 const XMLTreeGhost: React.FC<XMLTreeGhostProps> = ({ 
   element, 
+  isDuplicateMode,
   className 
 }) => {
   return (
@@ -20,8 +22,8 @@ const XMLTreeGhost: React.FC<XMLTreeGhostProps> = ({
         // Base ghost styling - subtle and elegant
         "xml-tree-ghost",
         "flex items-center gap-2 p-2 rounded",
-        "bg-gray-100 dark:bg-gray-800",
-        "border border-gray-300 dark:border-gray-600",
+        isDuplicateMode ? "bg-green-100 dark:bg-green-900/50" : "bg-gray-100 dark:bg-gray-800",
+        isDuplicateMode ? "border border-green-400 dark:border-green-600" : "border border-gray-300 dark:border-gray-600",
         "shadow-lg",
         // Transform for visual appeal (subtle tilt)
         "transform rotate-1",
@@ -67,6 +69,13 @@ const XMLTreeGhost: React.FC<XMLTreeGhostProps> = ({
         {element.content && (
           <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[100px] font-normal ml-1">
             {element.content}
+          </span>
+        )}
+
+        {/* Duplicate mode indicator */}
+        {isDuplicateMode && (
+          <span className="text-xs font-bold text-green-700 dark:text-green-300 bg-green-200 dark:bg-green-800 px-1 py-0.5 rounded ml-2">
+            COPY
           </span>
         )}
       </div>

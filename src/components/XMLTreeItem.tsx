@@ -18,6 +18,7 @@ interface XMLTreeItemProps {
   isAnyDragActive: boolean;
   isValidDropTarget: boolean;
   isOverTarget: boolean;
+  isDuplicateMode?: boolean;
   onElementClick: (element: FlatXMLElement) => void;
   onAddChild: (elementId: string) => void;
   onDelete: (elementId: string) => void;
@@ -35,6 +36,7 @@ const XMLTreeItem: React.FC<XMLTreeItemProps> = ({
   isAnyDragActive,
   isValidDropTarget,
   isOverTarget,
+  isDuplicateMode,
   onElementClick,
   onAddChild,
   onDelete,
@@ -81,7 +83,9 @@ const XMLTreeItem: React.FC<XMLTreeItemProps> = ({
         !isSelected && "hover:bg-gray-100 dark:hover:bg-gray-800",
         isDragging && "z-50",
         // Only outline the current hovered drop target; keep it inside rounded edges
-        isOverTarget && !isDragging && "ring-2 ring-inset ring-blue-400/60"
+        isOverTarget && !isDragging && !isDuplicateMode && "ring-2 ring-inset ring-blue-400/60",
+        // Special styling for duplicate mode drops
+        isOverTarget && !isDragging && isDuplicateMode && "ring-2 ring-inset ring-green-400/60 bg-green-50/50"
       )}
       data-tree-item={element.id}
       data-testid={`tree-item-${element.id}`}
@@ -136,6 +140,13 @@ const XMLTreeItem: React.FC<XMLTreeItemProps> = ({
         {element.content && (
           <span className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-500 truncate max-w-[150px] font-normal ml-2`}>
             {element.content}
+          </span>
+        )}
+
+        {/* Duplicate mode indicator */}
+        {isDuplicateMode && isDragging && (
+          <span className="text-xs font-bold text-green-600 bg-green-100 px-1 py-0.5 rounded ml-2">
+            COPY
           </span>
         )}
 
