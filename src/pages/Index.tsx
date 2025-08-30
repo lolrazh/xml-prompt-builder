@@ -10,11 +10,13 @@ import { useLocation } from 'react-router-dom';
 import { ChevronDown } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { toast } from 'sonner';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
 const Index = () => {
   const { user } = useBetterAuth();
   const authenticatedFetch = useBetterAuthenticatedFetch();
   const location = useLocation();
+  const isOnline = useOnlineStatus();
   const promptBuilderRef = useRef<PromptBuilderRef>(null);
   const [prompts, setPrompts] = useState<Array<{ id: string; name: string }>>([]);
   const [isLoadingPrompts, setIsLoadingPrompts] = useState(false);
@@ -229,8 +231,10 @@ const Index = () => {
               {selectedPrompt && (
                 <Button
                   onClick={handleBranch}
+                  disabled={!isOnline}
                   size="sm"
-                  className="flex items-center gap-1 bg-[#FFE766] py-5 text-md hover:bg-[#E6D147] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
+                  className="flex items-center gap-1 bg-[#FFE766] py-5 text-md hover:bg-[#E6D147] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={!isOnline ? 'Cannot branch prompts while offline' : ''}
                 >
                   <GitBranch className="h-4 w-4 stroke-[3]" />
                   Branch
@@ -238,9 +242,10 @@ const Index = () => {
               )}
               <Button
                 onClick={handleNewPrompt}
-                disabled={isCreatingNew}
+                disabled={isCreatingNew || !isOnline}
                 size="sm"
-                className="flex items-center gap-1 bg-[#9AE66E] py-5 text-md hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
+                className="flex items-center gap-1 bg-[#9AE66E] py-5 text-md hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                title={!isOnline ? 'Cannot create new prompts while offline' : ''}
               >
                 <Plus className="h-4 w-4 stroke-[3]" />
                 {isCreatingNew ? 'Creating...' : 'New'}
@@ -248,8 +253,10 @@ const Index = () => {
               <DropdownMenu.Root>
                 <DropdownMenu.Trigger asChild>
                   <button
-                    className="flex items-center min-w-[150px] text-right justify-end gap-2 px-3 py-2 border-2 border-black bg-white rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-[13px]"
+                    disabled={!isOnline}
+                    className="flex items-center min-w-[150px] text-right justify-end gap-2 px-3 py-2 border-2 border-black bg-white rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-[13px] disabled:opacity-50 disabled:cursor-not-allowed"
                     aria-label="Open prompt library"
+                    title={!isOnline ? 'Cannot load prompts while offline' : ''}
                   >
                     {isLoadingPrompts 
                       ? 'Loading prompts…' 
@@ -311,8 +318,9 @@ const Index = () => {
               />
               <Button
                 size="sm"
-                disabled={isSaving || !saveName.trim()}
-                className="flex items-center gap-1 bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
+                disabled={isSaving || !saveName.trim() || !isOnline}
+                className="flex items-center gap-1 bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                title={!isOnline ? 'Cannot save prompts while offline' : ''}
                 onClick={async () => {
                   setIsSaving(true);
                   try {
