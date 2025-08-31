@@ -2,6 +2,13 @@
 # XML Prompt Builder
 
 <div align="center">
+
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/lolrazh/xml-prompt-builder)
+![License](https://img.shields.io/github/license/lolrazh/xml-prompt-builder)
+
+</div>
+
+<div align="center">
   <img src="public/page.png" alt="XML Prompt Builder Logo" width="1000"/>
 </div>
 

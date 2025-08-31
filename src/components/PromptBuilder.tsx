@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { Button } from '@/components/ui/button';
+import { ResponsiveButton } from '@/components/ui/responsive-button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Trash, Plus, Copy, MoveVertical, Upload, Download, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn, estimateTokenCount, formatTokenCount } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 import ElementEditor from './ElementEditor';
-import ElementTree from './ElementTree';
+import XMLTreeContainer from './XMLTreeContainer';
 import { looseParseXML } from '@/lib/loose-xml';
 
 export interface XMLElement {
@@ -31,7 +33,21 @@ const PromptBuilder = forwardRef<PromptBuilderRef>((props, ref) => {
     rawInput: 'xmlPromptBuilder.rawInput',
   } as const;
 
-  const [elements, setElements] = useState<XMLElement[]>([]);
+  const STORAGE_KEY = 'xmlpb_elements_v1';
+  const isMobile = useIsMobile();
+
+  const [elements, setElements] = useState<XMLElement[]>(() => {
+    try {
+      const raw = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed as XMLElement[];
+      if (parsed && Array.isArray((parsed as any).elements)) return (parsed as any).elements as XMLElement[];
+      return [];
+    } catch {
+      return [];
+    }
+  });
   const [outputXML, setOutputXML] = useState<string>('');
   const [selectedElement, setSelectedElement] = useState<XMLElement | null>(null);
   const [tokenCount, setTokenCount] = useState<number>(0);
@@ -50,6 +66,7 @@ const PromptBuilder = forwardRef<PromptBuilderRef>((props, ref) => {
     }
     return '';
   };
+
 
   const importFromText = async (text: string) => {
     try {
@@ -243,6 +260,24 @@ const PromptBuilder = forwardRef<PromptBuilderRef>((props, ref) => {
       }
     } catch {
       // ignore storage errors
+    }
+  }, [elements]);
+
+  // Persist elements to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(elements));
+    } catch {
+      // ignore storage errors (quota, privacy mode, etc.)
+    }
+  }, [elements]);
+
+  // Persist elements to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(elements));
+    } catch {
+      // ignore storage errors (quota, privacy mode, etc.)
     }
   }, [elements]);
 
@@ -612,6 +647,11 @@ const PromptBuilder = forwardRef<PromptBuilderRef>((props, ref) => {
     setSelectedElement(null);
     setRawInput('');
     try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+    try {
       localStorage.removeItem(STORAGE_KEYS.elements);
       localStorage.removeItem(STORAGE_KEYS.rawInput);
     } catch {
@@ -647,12 +687,13 @@ const PromptBuilder = forwardRef<PromptBuilderRef>((props, ref) => {
     importFromText
   }));
 
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
       <Card className="p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.5)] border-2 border-black dark:border-gray-100 rounded-none bg-[#F2FCE2] dark:bg-gray-800">
-        <h2 className="text-xl font-bold mb-4 flex flex-col md:flex-row md:justify-between md:items-center gap-2 border-b-2 border-black dark:border-gray-100 pb-2">
+        <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold mb-4 flex flex-col md:flex-row md:justify-between md:items-center gap-2 border-b-2 border-black dark:border-gray-100 pb-2`}>
           <span className="font-black">Structure Builder</span>
-          <div className="flex items-center gap-2 mb-2">
+          <div className={cn("flex items-center", isMobile ? "gap-1" : "gap-2 mb-2")}>
             <input
               ref={fileInputRef}
               type="file"
@@ -660,28 +701,28 @@ const PromptBuilder = forwardRef<PromptBuilderRef>((props, ref) => {
               className="hidden"
               onChange={onFileInputChange}
             />
-            <Button
+            <ResponsiveButton
               onClick={onClickImport}
               size="sm"
-              className="flex items-center gap-1 bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
-            >
-              <Upload className="h-4 w-4 stroke-[3]" /> import
-            </Button>
-            <Button
+              icon={<Upload className="h-4 w-4 stroke-[3]" />}
+              text="Import"
+              className="bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
+            />
+            <ResponsiveButton
               onClick={clearAll}
               size="sm"
               disabled={!elements.length}
-              className="flex items-center gap-1 bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
-            >
-              <Trash className="h-4 w-4 stroke-[3]" /> clear
-            </Button>
-            <Button 
+              icon={<Trash className="h-4 w-4 stroke-[3]" />}
+              text="Clear"
+              className="bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
+            />
+            <ResponsiveButton 
               onClick={addNewElement} 
               size="sm" 
-              className="flex items-center gap-1 bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
-            >
-              <Plus className="h-4 w-4 stroke-[3]" /> add element
-            </Button>
+              icon={<Plus className="h-4 w-4 stroke-[3]" />}
+              text="Add Element"
+              className="bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
+            />
           </div>
         </h2>
         
@@ -691,16 +732,17 @@ const PromptBuilder = forwardRef<PromptBuilderRef>((props, ref) => {
         )}>
           {elements.length === 0 ? (
             <div className="text-center text-gray-400 text-sm">
-              <p>No elements yet. Add an element to begin building your prompt.</p>
+              <p className={isMobile ? 'text-xs' : 'text-sm'}>No elements yet. Add an element to begin building your prompt.</p>
             </div>
           ) : (
-            <ElementTree 
+            <XMLTreeContainer 
               elements={elements} 
+              onElementsChange={setElements}
               onElementSelect={setSelectedElement}
               onAddChild={addChildElement}
               onDelete={deleteElement}
               onToggleCollapse={toggleCollapseElement}
-              onToggleVisibility={toggleVisibilityElement} // Add this line
+              onToggleVisibility={toggleVisibilityElement}
               onMoveUp={moveElementUp}
               onMoveDown={moveElementDown}
               selectedElementId={selectedElement?.id}
@@ -719,17 +761,17 @@ const PromptBuilder = forwardRef<PromptBuilderRef>((props, ref) => {
             />
           ) : (
             <div className="text-center text-gray-400">
-              <p className="font-mono text-sm">Select an element to edit its properties.</p>
+              <p className={`font-mono ${isMobile ? 'text-xs' : 'text-sm'}`}>Select an element to edit its properties.</p>
             </div>
           )}
         </div>
       </Card>
       
       <Card className="p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.5)] border-2 border-black dark:border-gray-100 rounded-none bg-[#F2FCE2] dark:bg-gray-800">
-        <h2 className="text-xl font-bold mb-4 flex flex-col md:flex-row md:justify-between md:items-center gap-2 border-b-2 border-black dark:border-gray-100 pb-2">
+        <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold mb-4 flex flex-col md:flex-row md:justify-between md:items-center gap-2 border-b-2 border-black dark:border-gray-100 pb-2`}>
           <span className="font-black">XML Preview</span>
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-sm font-mono font-bold text-gray-600 dark:text-gray-400 pr-1">
+          <div className={cn("flex items-center", isMobile ? "gap-1" : "gap-3 mb-2")}>
+            <span className={`${isMobile ? 'text-xs' : 'text-sm'} font-mono font-bold text-gray-600 dark:text-gray-400 pr-1`}>
               ~{formatTokenCount(tokenCount)}
             </span>
             <Button 
@@ -740,13 +782,13 @@ const PromptBuilder = forwardRef<PromptBuilderRef>((props, ref) => {
             >
               <Download className="h-4 w-4 stroke-[3]" /> Export
             </Button>
-            <Button 
+            <ResponsiveButton 
               onClick={copyToClipboard} 
               size="sm" 
-              className="flex items-center gap-1 bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
-            >
-              <Copy className="h-4 w-4 stroke-[3]" /> Copy
-            </Button>
+              icon={<Copy className="h-4 w-4 stroke-[3]" />}
+              text="Copy"
+              className="bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
+            />
           </div>
         </h2>
         <pre
@@ -755,7 +797,7 @@ const PromptBuilder = forwardRef<PromptBuilderRef>((props, ref) => {
           suppressContentEditableWarning
           data-placeholder="Paste XML here."
           className={cn(
-            "relative w-full min-h-[400px] max-h-[70vh] overflow-y-auto whitespace-pre-wrap font-mono text-sm bg-white dark:bg-gray-800 border-2 border-black dark:border-gray-100 rounded-none p-4",
+            `relative w-full min-h-[400px] max-h-[70vh] overflow-y-auto whitespace-pre-wrap font-mono ${isMobile ? 'text-xs' : 'text-sm'} bg-white dark:bg-gray-800 border-2 border-black dark:border-gray-100 rounded-none p-4`,
             elements.length === 0 ? "cursor-text" : "select-text",
             elements.length === 0 && !rawInput && "flex items-center justify-center",
             elements.length === 0 && isDragActive && "border-dashed bg-[#F2FCE2]"

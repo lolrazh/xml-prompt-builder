@@ -12,12 +12,14 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { toast } from 'sonner';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const Index = () => {
   const { user } = useBetterAuth();
   const authenticatedFetch = useBetterAuthenticatedFetch();
   const location = useLocation();
   const isOnline = useOnlineStatus();
+  const isMobile = useIsMobile();
   const promptBuilderRef = useRef<PromptBuilderRef>(null);
   const [prompts, setPrompts] = useState<Array<{ id: string; name: string }>>([]);
   const [isLoadingPrompts, setIsLoadingPrompts] = useState(false);
@@ -181,10 +183,10 @@ const Index = () => {
         <div className="container mx-auto px-4 py-10">
         {/* Landing Page Content */}
         <div className="mb-16 text-center">
-          <h2 className="text-5xl font-black mb-6 leading-tight text-black dark:text-white">
+          <h2 className={`${isMobile ? 'text-3xl' : 'text-5xl'} font-black mb-6 leading-tight text-black dark:text-white`}>
             Build <span className="text-[#76B947]">XML Prompts</span> Visually
           </h2>
-          <p className="text-xl max-w-3xl mx-auto text-gray-700 dark:text-gray-300 mb-10">
+          <p className={`${isMobile ? 'text-lg' : 'text-xl'} max-w-3xl mx-auto text-gray-700 dark:text-gray-300 mb-10`}>
             Create structured XML prompts for AI systems without the hassle of manual formatting.
             Perfect for prompt engineers and AI enthusiasts.  
             {!user ? (
@@ -197,7 +199,7 @@ const Index = () => {
           <div className={`grid grid-cols-1 md:grid-cols-4 gap-6 max-w-5xl mx-auto ${user ? 'hidden' : ''}`}>
             <div className="p-4 border-2 border-black rounded-none bg-white dark:bg-gray-800 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col items-center">
               <PlusCircle className="h-10 w-10 mb-3 stroke-[2.5] text-[#76B947]" />
-              <h3 className="text-xl font-bold mb-2">Create Elements</h3>
+              <h3 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold mb-2`}>Create Elements</h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 Add XML tags and nest them to create complex hierarchies easily
               </p>
@@ -205,7 +207,7 @@ const Index = () => {
             
             <div className="p-4 border-2 border-black rounded-none bg-white dark:bg-gray-800 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col items-center">
               <Sparkles className="h-10 w-10 mb-3 stroke-[2.5] text-[#76B947]" />
-              <h3 className="text-xl font-bold mb-2">Format Automatically</h3>
+              <h3 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold mb-2`}>Format Automatically</h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 Let the tool handle indentation, nesting, and proper XML formatting
               </p>
@@ -213,7 +215,7 @@ const Index = () => {
 
             <div className="p-4 border-2 border-black rounded-none bg-white dark:bg-gray-800 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col items-center">
               <ClipboardPaste className="h-10 w-10 mb-3 stroke-[2.5] text-[#76B947]" />
-              <h3 className="text-xl font-bold mb-2">Import XML</h3>
+              <h3 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold mb-2`}>Import XML</h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 Paste an existing XML prompt and edit it visually in seconds
               </p>
@@ -221,7 +223,7 @@ const Index = () => {
             
             <div className="p-4 border-2 border-black rounded-none bg-white dark:bg-gray-800 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col items-center">
               <Code className="h-10 w-10 mb-3 stroke-[2.5] text-[#76B947]" />
-              <h3 className="text-xl font-bold mb-2">Copy & Use</h3>
+              <h3 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold mb-2`}>Copy & Use</h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 Copy perfectly structured XML prompts for use in your AI applications
               </p>

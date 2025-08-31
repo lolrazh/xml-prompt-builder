@@ -3,24 +3,28 @@ import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const HelpDialog: React.FC = () => {
+  const isMobile = useIsMobile();
+  
   return (
     <Dialog>
       <DialogTrigger asChild>
         <Button 
           variant="ghost" 
           size="icon" 
-          className="h-10 w-10 rounded-none hover:bg-[#9AE66E]/30"
+          className="h-9 w-9 rounded-none hover:bg-[#9AE66E]/30"
+          title="Help"
         >
-          <HelpCircle className="h-10 w-10 stroke-[3]" />
+          <HelpCircle className={isMobile ? "h-5 w-5 stroke-[3]" : "h-7 w-7 stroke-[3]"} />
         </Button>
       </DialogTrigger>
       <DialogContent className="border-2 border-black rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-[#F2FCE2]">
         <DialogHeader>
-          <DialogTitle className="text-xl font-black">How to Use XML Prompt Builder</DialogTitle>
+          <DialogTitle className={`${isMobile ? 'text-lg' : 'text-xl'} font-black`}>How to Use XML Prompt Builder</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 text-sm mt-2">
+        <div className={`space-y-4 ${isMobile ? 'text-xs' : 'text-sm'} mt-2`}>
           <div>
             <p className="font-bold mb-1">Getting Started:</p>
             <ul className="list-disc pl-5 space-y-1">
