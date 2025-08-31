@@ -9,7 +9,6 @@ import Login from "./pages/Login.tsx";
 import AuthLogin from "./pages/AuthLogin.tsx";
 import Account from "./pages/Account.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
-import { OfflineIndicator } from "@/components/OfflineIndicator";
 
 const queryClient = new QueryClient();
 
@@ -19,7 +18,6 @@ const App = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <OfflineIndicator />
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />

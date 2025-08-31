@@ -3,6 +3,7 @@ import { useBetterAuth } from '@/auth/useBetterAuth';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
+import { OfflineIndicator } from '@/components/OfflineIndicator';
 
 const Row: React.FC<{ label: string; value?: React.ReactNode }> = ({ label, value }) => (
   <div className="grid grid-cols-3 gap-4 py-2 border-b border-black/20 dark:border-white/20">
@@ -48,6 +49,7 @@ const Account: React.FC = () => {
             </div>
           </div>
         </main>
+        <OfflineIndicator />
         <footer className="border-t-2 border-black dark:border-gray-700 mt-16 py-6 bg-[#F2FCE2] dark:bg-gray-900">
           <div className="container mx-auto px-4 text-center text-sm text-gray-600 dark:text-gray-400">
             <p>Created with ♥ for prompt engineers and AI enthusiasts
@@ -130,6 +132,7 @@ const Account: React.FC = () => {
           </div>
         </div>
       </main>
+      <OfflineIndicator />
       <footer className="border-t-2 border-black dark:border-gray-700 mt-16 py-6 bg-[#F2FCE2] dark:bg-gray-900">
         <div className="container mx-auto px-4 text-center text-sm text-gray-600 dark:text-gray-400">
           <p>Created with ♥ for prompt engineers and AI enthusiasts

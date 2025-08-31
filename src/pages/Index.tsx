@@ -11,6 +11,7 @@ import { ChevronDown } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { toast } from 'sonner';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { OfflineIndicator } from '@/components/OfflineIndicator';
 
 const Index = () => {
   const { user } = useBetterAuth();
@@ -357,6 +358,7 @@ const Index = () => {
         </div>
       </main>
       
+      <OfflineIndicator />
       <footer className="border-t-2 border-black dark:border-gray-700 mt-16 py-6 bg-[#F2FCE2] dark:bg-gray-900">
         <div className="container mx-auto px-4 text-center text-sm text-gray-600 dark:text-gray-400">
           <p>Created with ♥ for prompt engineers and AI enthusiasts
