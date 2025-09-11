@@ -50,7 +50,16 @@ const HelpDialog: React.FC = () => {
               <li>Copy the final XML when you're done</li>
             </ul>
           </div>
-          {/* Import section hidden for now */}
+          <div>
+            <p className="font-bold mb-1">Import Existing XML:</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>
+                When the builder is empty, paste any XML into the <em>XML Preview</em> panel
+                to load it instantly
+              </li>
+              <li>Or use the Import button to load a file</li>
+            </ul>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
