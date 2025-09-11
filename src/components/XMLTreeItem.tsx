@@ -141,8 +141,16 @@ const XMLTreeItem: React.FC<XMLTreeItemProps> = ({
 
       </div>
       
-      {/* Action buttons - appear on hover */}
-      <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity flex-shrink-0">
+      {/* Action buttons */}
+      <div
+        className={cn(
+          "flex items-center gap-1 transition-opacity flex-shrink-0",
+          // Desktop: show on hover; Mobile: keep visible when selected
+          isMobile
+            ? (isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100")
+            : "opacity-0 group-hover:opacity-100"
+        )}
+      >
         
         {/* Visibility toggle */}
         <Button
