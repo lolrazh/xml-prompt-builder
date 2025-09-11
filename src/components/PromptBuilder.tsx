@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { ResponsiveButton } from '@/components/ui/responsive-button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Trash, Plus, Copy, MoveVertical, Upload, Save, FolderOpen } from 'lucide-react';
+import { Trash, Plus, Copy, MoveVertical, Save, FolderOpen, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn, estimateTokenCount, formatTokenCount } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -35,6 +35,8 @@ const PromptBuilder: React.FC = () => {
   const STORAGE_KEY = 'xmlpb_elements_v1';
   const TEMPLATES_KEY = 'xmlpb_templates_v1';
   const isMobile = useIsMobile();
+  const ENABLE_IMPORT_FILE = true; // show file import UI
+  const ENABLE_IMPORT_PASTE = true; // enable paste-to-import when empty
 
   const [elements, setElements] = useState<XMLElement[]>(() => {
     try {
@@ -300,6 +302,7 @@ const PromptBuilder: React.FC = () => {
   }, [elements]);
 
   useEffect(() => {
+    if (!ENABLE_IMPORT_PASTE) return;
     const previewEl = document.getElementById('xml-preview');
 
     const handlePaste = (e: ClipboardEvent) => {
@@ -328,7 +331,7 @@ const PromptBuilder: React.FC = () => {
         previewEl.removeEventListener('paste', handlePaste);
       }
     };
-  }, [elements, rawInput]);
+  }, [elements, rawInput, ENABLE_IMPORT_PASTE]);
 
   // Update selectedElement reference when elements change to prevent stale state
   useEffect(() => {
@@ -636,20 +639,24 @@ const PromptBuilder: React.FC = () => {
         <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold mb-4 flex justify-between items-center border-b-2 border-black dark:border-gray-100 pb-2`}>
           <span className="font-black">Structure Builder</span>
           <div className={cn("flex items-center", isMobile ? "gap-1" : "gap-2")}>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xml,.txt,.html,.htm,.svg,.rss,.atom,.plist"
-              className="hidden"
-              onChange={onFileInputChange}
-            />
-            <ResponsiveButton
-              onClick={onClickImport}
-              size="sm"
-              icon={<Upload className="h-4 w-4 stroke-[3]" />}
-              text="Import"
-              className="bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
-            />
+            {ENABLE_IMPORT_FILE && (
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xml,.txt,.html,.htm,.svg,.rss,.atom,.plist"
+                  className="hidden"
+                  onChange={onFileInputChange}
+                />
+                <ResponsiveButton
+                  onClick={onClickImport}
+                  size="sm"
+                  icon={<Upload className="h-4 w-4 stroke-[3]" />}
+                  text="Import"
+                  className="bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
+                />
+              </>
+            )}
             <ResponsiveButton
               onClick={openLoadDialog}
               size="sm"
@@ -741,52 +748,66 @@ const PromptBuilder: React.FC = () => {
         </h2>
         <pre
           id="xml-preview"
-          contentEditable={elements.length === 0}
+          contentEditable={ENABLE_IMPORT_PASTE && elements.length === 0}
           suppressContentEditableWarning
-          data-placeholder="Paste XML here."
+          data-placeholder={ENABLE_IMPORT_PASTE ? 'Paste XML here.' : undefined}
           className={cn(
             `relative w-full min-h-[400px] max-h-[70vh] overflow-y-auto whitespace-pre-wrap font-mono ${isMobile ? 'text-xs' : 'text-sm'} bg-white dark:bg-gray-800 border-2 border-black dark:border-gray-100 rounded-none p-4`,
             elements.length === 0 ? "cursor-text" : "select-text",
-            elements.length === 0 && !rawInput && "flex items-center justify-center",
-            elements.length === 0 && isDragActive && "border-dashed bg-[#F2FCE2]"
+            elements.length === 0 && ENABLE_IMPORT_FILE && isDragActive && "border-dashed bg-[#F2FCE2]"
           )}
           onInput={(e) => {
+            if (!ENABLE_IMPORT_PASTE) return;
             if (elements.length) return;
             setRawInput((e.target as HTMLElement).innerText);
           }}
-          onDrop={onDrop}
-          onDragOver={onDragOver}
-          onDragEnter={onDragEnter}
-          onDragLeave={onDragLeave}
+          onDrop={ENABLE_IMPORT_FILE ? onDrop : undefined}
+          onDragOver={ENABLE_IMPORT_FILE ? onDragOver : undefined}
+          onDragEnter={ENABLE_IMPORT_FILE ? onDragEnter : undefined}
+          onDragLeave={ENABLE_IMPORT_FILE ? onDragLeave : undefined}
         >
-          {elements.length === 0 ? (rawInput || (isDragActive ? 'Drop file to import…' : '')) : outputXML}
+          {elements.length === 0
+            ? (ENABLE_IMPORT_PASTE ? (rawInput || (ENABLE_IMPORT_FILE && isDragActive ? 'Drop file to import…' : '')) : '')
+            : outputXML}
         </pre>
       </Card>
 
       {/* Save Template Dialog */}
       <Dialog open={isSaveOpen} onOpenChange={setIsSaveOpen}>
-        <DialogContent className="border-2 border-black rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-[#F2FCE2]">
-          <DialogHeader>
+        <DialogContent className="border-2 border-black dark:border-gray-100 rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.5)] bg-[#F2FCE2] dark:bg-gray-800">
+          <DialogHeader className="border-b-2 border-black dark:border-gray-100 pb-2 mb-2">
             <DialogTitle className={`${isMobile ? 'text-lg' : 'text-xl'} font-black`}>Save Template</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <Label htmlFor="tpl-name">Name</Label>
-            <Input id="tpl-name" value={saveName} onChange={(e) => setSaveName(e.target.value)} placeholder="My template" />
+            <Input
+              id="tpl-name"
+              value={saveName}
+              onChange={(e) => setSaveName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  saveCurrentTemplate();
+                }
+              }}
+              placeholder="My template"
+              className="rounded-none border-2 border-black"
+            />
           </div>
           <DialogFooter>
-            <Button onClick={() => setIsSaveOpen(false)} variant="outline" className="rounded-none border-2 border-black">Cancel</Button>
-            <Button onClick={saveCurrentTemplate} className="bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none">Save</Button>
+            <Button onClick={() => setIsSaveOpen(false)} className="bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all focus-visible:ring-0 focus-visible:ring-offset-0">Cancel</Button>
+            <Button onClick={saveCurrentTemplate} className="bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all focus-visible:ring-0 focus-visible:ring-offset-0">Save</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Load Template Dialog */}
       <Dialog open={isLoadOpen} onOpenChange={setIsLoadOpen}>
-        <DialogContent className="border-2 border-black rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-[#F2FCE2]">
-          <DialogHeader>
+        <DialogContent className="border-2 border-black dark:border-gray-100 rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.5)] bg-[#F2FCE2] dark:bg-gray-800">
+          <DialogHeader className="border-b-2 border-black dark:border-gray-100 pb-2 mb-2">
             <DialogTitle className={`${isMobile ? 'text-lg' : 'text-xl'} font-black`}>Load Template</DialogTitle>
           </DialogHeader>
-          <div className="max-h-[50vh] overflow-y-auto">
+          <div className="max-h-[50vh] overflow-y-auto overflow-x-visible pr-2">
             {templates.length === 0 ? (
               <div className="text-sm text-gray-500">No saved templates yet.</div>
             ) : (
@@ -800,8 +821,8 @@ const PromptBuilder: React.FC = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <Button onClick={() => loadTemplate(tpl)} className="bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none px-3 py-1">Load</Button>
-                      <Button onClick={() => deleteTemplate(tpl)} variant="destructive" className="rounded-none border-2 border-black px-3 py-1">Delete</Button>
+                      <Button onClick={() => loadTemplate(tpl)} className="bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none px-3 py-1 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all focus-visible:ring-0 focus-visible:ring-offset-0">Load</Button>
+                      <Button onClick={() => deleteTemplate(tpl)} className="bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none px-3 py-1 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all focus-visible:ring-0 focus-visible:ring-offset-0">Delete</Button>
                     </div>
                   </li>
                 ))}

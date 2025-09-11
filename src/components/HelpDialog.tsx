@@ -20,8 +20,8 @@ const HelpDialog: React.FC = () => {
           <HelpCircle className={isMobile ? "h-5 w-5 stroke-[3]" : "h-7 w-7 stroke-[3]"} />
         </Button>
       </DialogTrigger>
-      <DialogContent className="border-2 border-black rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-[#F2FCE2]">
-        <DialogHeader>
+      <DialogContent className="border-2 border-black dark:border-gray-100 rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.5)] bg-[#F2FCE2] dark:bg-gray-800">
+        <DialogHeader className="border-b-2 border-black dark:border-gray-100 pb-2 mb-2">
           <DialogTitle className={`${isMobile ? 'text-lg' : 'text-xl'} font-black`}>How to Use XML Prompt Builder</DialogTitle>
         </DialogHeader>
         <div className={`space-y-4 ${isMobile ? 'text-xs' : 'text-sm'} mt-2`}>
@@ -57,7 +57,7 @@ const HelpDialog: React.FC = () => {
                 When the builder is empty, paste any XML into the <em>XML Preview</em> panel
                 to load it instantly
               </li>
-              <li>Fix parse errors (quotes, closing tags) and try again if needed</li>
+              <li>Or use the Import button to load a file</li>
             </ul>
           </div>
         </div>

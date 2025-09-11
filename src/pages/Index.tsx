@@ -2,7 +2,7 @@
 import React from 'react';
 import PromptBuilder from '../components/PromptBuilder';
 import HelpDialog from '../components/HelpDialog';
-import { Code, Github, PlusCircle, Sparkles, ClipboardPaste } from 'lucide-react';
+import { Code, Github, PlusCircle, Sparkles, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -60,10 +60,10 @@ const Index = () => {
             </div>
 
             <div className="p-4 border-2 border-black rounded-none bg-white dark:bg-gray-800 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col items-center">
-              <ClipboardPaste className="h-10 w-10 mb-3 stroke-[2.5] text-[#76B947]" />
-              <h3 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold mb-2`}>Import XML</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Paste an existing XML prompt and edit it visually in seconds
+              <Save className="h-10 w-10 mb-3 stroke-[2.5] text-[#76B947]" />
+              <h3 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold mb-2`}>Create Templates</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
+                Save named prompt templates and load them anytime to reuse and iterate faster
               </p>
             </div>
             
@@ -84,14 +84,14 @@ const Index = () => {
       <footer className="border-t-2 border-black dark:border-gray-700 mt-16 py-6 bg-[#F2FCE2] dark:bg-gray-900">
         <div className="container mx-auto px-4 text-center text-sm text-gray-600 dark:text-gray-400">
           <p>Created with ♥ for prompt engineers and AI enthusiasts
-            {" - "}
+            {" - by "}
             <a 
               href="https://github.com/lolrazh" 
               target="_blank" 
               rel="noopener noreferrer"
               className="font-medium hover:underline"
             >
-              by @lolrazh
+              @lolrazh
             </a>
           </p>
         </div>
