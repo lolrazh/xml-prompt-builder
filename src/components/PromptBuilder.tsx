@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { ResponsiveButton } from '@/components/ui/responsive-button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Trash, Plus, Copy, MoveVertical, Upload, Save, FolderOpen } from 'lucide-react';
+import { Trash, Plus, Copy, MoveVertical, Save, FolderOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn, estimateTokenCount, formatTokenCount } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -35,6 +35,7 @@ const PromptBuilder: React.FC = () => {
   const STORAGE_KEY = 'xmlpb_elements_v1';
   const TEMPLATES_KEY = 'xmlpb_templates_v1';
   const isMobile = useIsMobile();
+  const ENABLE_IMPORT = false;
 
   const [elements, setElements] = useState<XMLElement[]>(() => {
     try {
@@ -135,11 +136,7 @@ const PromptBuilder: React.FC = () => {
   };
 
   const onClickImport = () => {
-    if (elements.length > 0) {
-      const proceed = window.confirm('Importing will replace the current structure. Continue?');
-      if (!proceed) return;
-    }
-    fileInputRef.current?.click();
+    // Import disabled
   };
 
   const openSaveDialog = () => {
@@ -300,6 +297,7 @@ const PromptBuilder: React.FC = () => {
   }, [elements]);
 
   useEffect(() => {
+    if (!ENABLE_IMPORT) return;
     const previewEl = document.getElementById('xml-preview');
 
     const handlePaste = (e: ClipboardEvent) => {
@@ -328,7 +326,7 @@ const PromptBuilder: React.FC = () => {
         previewEl.removeEventListener('paste', handlePaste);
       }
     };
-  }, [elements, rawInput]);
+  }, [elements, rawInput, ENABLE_IMPORT]);
 
   // Update selectedElement reference when elements change to prevent stale state
   useEffect(() => {
@@ -636,20 +634,17 @@ const PromptBuilder: React.FC = () => {
         <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold mb-4 flex justify-between items-center border-b-2 border-black dark:border-gray-100 pb-2`}>
           <span className="font-black">Structure Builder</span>
           <div className={cn("flex items-center", isMobile ? "gap-1" : "gap-2")}>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xml,.txt,.html,.htm,.svg,.rss,.atom,.plist"
-              className="hidden"
-              onChange={onFileInputChange}
-            />
-            <ResponsiveButton
-              onClick={onClickImport}
-              size="sm"
-              icon={<Upload className="h-4 w-4 stroke-[3]" />}
-              text="Import"
-              className="bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
-            />
+            {ENABLE_IMPORT && (
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xml,.txt,.html,.htm,.svg,.rss,.atom,.plist"
+                  className="hidden"
+                  onChange={onFileInputChange}
+                />
+              </>
+            )}
             <ResponsiveButton
               onClick={openLoadDialog}
               size="sm"
@@ -741,25 +736,26 @@ const PromptBuilder: React.FC = () => {
         </h2>
         <pre
           id="xml-preview"
-          contentEditable={elements.length === 0}
+          contentEditable={false}
           suppressContentEditableWarning
-          data-placeholder="Paste XML here."
           className={cn(
             `relative w-full min-h-[400px] max-h-[70vh] overflow-y-auto whitespace-pre-wrap font-mono ${isMobile ? 'text-xs' : 'text-sm'} bg-white dark:bg-gray-800 border-2 border-black dark:border-gray-100 rounded-none p-4`,
-            elements.length === 0 ? "cursor-text" : "select-text",
-            elements.length === 0 && !rawInput && "flex items-center justify-center",
-            elements.length === 0 && isDragActive && "border-dashed bg-[#F2FCE2]"
+            elements.length === 0 ? "select-text" : "select-text"
           )}
-          onInput={(e) => {
-            if (elements.length) return;
-            setRawInput((e.target as HTMLElement).innerText);
-          }}
-          onDrop={onDrop}
-          onDragOver={onDragOver}
-          onDragEnter={onDragEnter}
-          onDragLeave={onDragLeave}
+          {...(ENABLE_IMPORT
+            ? {
+                onInput: (e: React.FormEvent<HTMLPreElement>) => {
+                  if (elements.length) return;
+                  setRawInput((e.target as HTMLElement).innerText);
+                },
+                onDrop: onDrop,
+                onDragOver: onDragOver,
+                onDragEnter: onDragEnter,
+                onDragLeave: onDragLeave,
+              }
+            : {})}
         >
-          {elements.length === 0 ? (rawInput || (isDragActive ? 'Drop file to import…' : '')) : outputXML}
+          {elements.length === 0 ? '' : outputXML}
         </pre>
       </Card>
 
