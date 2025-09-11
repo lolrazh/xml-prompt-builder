@@ -767,7 +767,19 @@ const PromptBuilder: React.FC = () => {
           </DialogHeader>
           <div className="space-y-3">
             <Label htmlFor="tpl-name">Name</Label>
-            <Input id="tpl-name" value={saveName} onChange={(e) => setSaveName(e.target.value)} placeholder="My template" className="rounded-none border-2 border-black" />
+            <Input
+              id="tpl-name"
+              value={saveName}
+              onChange={(e) => setSaveName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  saveCurrentTemplate();
+                }
+              }}
+              placeholder="My template"
+              className="rounded-none border-2 border-black"
+            />
           </div>
           <DialogFooter>
             <Button onClick={() => setIsSaveOpen(false)} className="bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all focus-visible:ring-0 focus-visible:ring-offset-0">Cancel</Button>
