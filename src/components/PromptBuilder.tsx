@@ -761,25 +761,25 @@ const PromptBuilder: React.FC = () => {
 
       {/* Save Template Dialog */}
       <Dialog open={isSaveOpen} onOpenChange={setIsSaveOpen}>
-        <DialogContent className="border-2 border-black rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-[#F2FCE2]">
-          <DialogHeader>
+        <DialogContent className="border-2 border-black dark:border-gray-100 rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.5)] bg-[#F2FCE2] dark:bg-gray-800">
+          <DialogHeader className="border-b-2 border-black dark:border-gray-100 pb-2 mb-2">
             <DialogTitle className={`${isMobile ? 'text-lg' : 'text-xl'} font-black`}>Save Template</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <Label htmlFor="tpl-name">Name</Label>
-            <Input id="tpl-name" value={saveName} onChange={(e) => setSaveName(e.target.value)} placeholder="My template" />
+            <Input id="tpl-name" value={saveName} onChange={(e) => setSaveName(e.target.value)} placeholder="My template" className="rounded-none border-2 border-black" />
           </div>
           <DialogFooter>
-            <Button onClick={() => setIsSaveOpen(false)} variant="outline" className="rounded-none border-2 border-black">Cancel</Button>
-            <Button onClick={saveCurrentTemplate} className="bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none">Save</Button>
+            <Button onClick={() => setIsSaveOpen(false)} className="bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all">Cancel</Button>
+            <Button onClick={saveCurrentTemplate} className="bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all">Save</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Load Template Dialog */}
       <Dialog open={isLoadOpen} onOpenChange={setIsLoadOpen}>
-        <DialogContent className="border-2 border-black rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-[#F2FCE2]">
-          <DialogHeader>
+        <DialogContent className="border-2 border-black dark:border-gray-100 rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.5)] bg-[#F2FCE2] dark:bg-gray-800">
+          <DialogHeader className="border-b-2 border-black dark:border-gray-100 pb-2 mb-2">
             <DialogTitle className={`${isMobile ? 'text-lg' : 'text-xl'} font-black`}>Load Template</DialogTitle>
           </DialogHeader>
           <div className="max-h-[50vh] overflow-y-auto">
@@ -796,8 +796,8 @@ const PromptBuilder: React.FC = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <Button onClick={() => loadTemplate(tpl)} className="bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none px-3 py-1">Load</Button>
-                      <Button onClick={() => deleteTemplate(tpl)} variant="destructive" className="rounded-none border-2 border-black px-3 py-1">Delete</Button>
+                      <Button onClick={() => loadTemplate(tpl)} className="bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none px-3 py-1 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all">Load</Button>
+                      <Button onClick={() => deleteTemplate(tpl)} className="bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none px-3 py-1 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all">Delete</Button>
                     </div>
                   </li>
                 ))}
