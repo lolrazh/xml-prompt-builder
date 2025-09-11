@@ -24,6 +24,9 @@ XML Prompt Builder is a visual tool for creating structured XML prompts for AI s
 - **Drag & Drop Reordering**: Rearrange elements with simple up/down controls
 - **Collapsible Elements**: Toggle visibility of complex nested structures
 - **Copy to Clipboard**: Export your finished XML with one click
+- **PWA Support**: Install as a mobile app and use offline
+- **Offline Mode**: Build prompts without internet connection
+- **User Authentication**: Save and sync prompts across devices
 
 ## 🛠️ How to Use
 

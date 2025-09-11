@@ -1,0 +1,19 @@
+{
+  "name": "backend",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy --minify",
+    "cf-typegen": "wrangler types --env-interface CloudflareBindings"
+  },
+  "dependencies": {
+    "better-auth": "^1.3.6",
+    "better-auth-cloudflare": "^0.2.4",
+    "drizzle-orm": "^0.44.4",
+    "hono": "^4.9.1"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250813.0",
+    "wrangler": "^4.4.0"
+  }
+}
