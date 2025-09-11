@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { ResponsiveButton } from '@/components/ui/responsive-button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Trash, Plus, Copy, MoveVertical, Upload, Download, FileText } from 'lucide-react';
+import { Trash, Plus, Copy, MoveVertical, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn, estimateTokenCount, formatTokenCount } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -20,19 +20,7 @@ export interface XMLElement {
   isVisible?: boolean;
 }
 
-export interface PromptBuilderRef {
-  clearAll: () => void;
-  hasContent: () => boolean;
-  getCurrentXML: () => string;
-  importFromText: (text: string) => void;
-}
-
-const PromptBuilder = forwardRef<PromptBuilderRef>((props, ref) => {
-  const STORAGE_KEYS = {
-    elements: 'xmlPromptBuilder.elements',
-    rawInput: 'xmlPromptBuilder.rawInput',
-  } as const;
-
+const PromptBuilder: React.FC = () => {
   const STORAGE_KEY = 'xmlpb_elements_v1';
   const isMobile = useIsMobile();
 
@@ -55,18 +43,6 @@ const PromptBuilder = forwardRef<PromptBuilderRef>((props, ref) => {
   const [isDragActive, setIsDragActive] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const loadTemplate = async (): Promise<string> => {
-    try {
-      const response = await fetch('/example.xml');
-      if (response.ok) {
-        return await response.text();
-      }
-    } catch (error) {
-      console.warn('Failed to load template:', error);
-    }
-    return '';
-  };
-
 
   const importFromText = async (text: string) => {
     try {
@@ -78,16 +54,6 @@ const PromptBuilder = forwardRef<PromptBuilderRef>((props, ref) => {
     } catch (err: any) {
       setRawInput(text);
       toast.error(err?.message || 'Parse error');
-    }
-  };
-
-  const loadTemplateManual = async () => {
-    const template = await loadTemplate();
-    if (template) {
-      await importFromText(template);
-      toast.success('Template loaded!');
-    } else {
-      toast.error('Failed to load template');
     }
   };
 
@@ -175,101 +141,46 @@ const PromptBuilder = forwardRef<PromptBuilderRef>((props, ref) => {
     setIsDragActive(false);
   };
 
-  // Hydrate from localStorage on first load
-  useEffect(() => {
-    const initialize = async () => {
-      try {
-        const saved = localStorage.getItem(STORAGE_KEYS.elements);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          const hydrate = (nodes: any[]): XMLElement[] => {
-            if (!Array.isArray(nodes)) return [];
-            const mapNode = (n: any): XMLElement => ({
-              id: typeof n?.id === 'string' ? n.id : `element-${Date.now()}-${Math.random()}`,
-              tagName: typeof n?.tagName === 'string' ? n.tagName : 'element',
-              content: typeof n?.content === 'string' ? n.content : '',
-              children: Array.isArray(n?.children) ? n.children.map(mapNode) : [],
-              collapsed: typeof n?.collapsed === 'boolean' ? n.collapsed : undefined,
-              isVisible: typeof n?.isVisible === 'boolean' ? n.isVisible : true,
-            });
-            return nodes.map(mapNode);
-          };
-          const hydrated = hydrate(parsed);
-          if (hydrated.length > 0) {
-            setElements(hydrated);
-            return; // prefer restored structure over raw input
-          }
-        }
-        
-        const savedRaw = localStorage.getItem(STORAGE_KEYS.rawInput);
-        if (savedRaw) {
-          setRawInput(savedRaw);
-          return;
-        }
-
-        // If no saved data exists, load the template
-        await initializeWithTemplate();
-      } catch {
-        // ignore restore errors
-      }
-    };
-    
-    initialize();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // Generate XML output whenever elements change
   useEffect(() => {
-    const generateXML = (elements: XMLElement[], indentLevel = 0, hasParent = false): string => {
+    const generateXML = (elements: XMLElement[], indentLevel = 0): string => {
       return elements
         .filter(element => element.isVisible !== false)
         .map(element => {
         const indent = '  '.repeat(indentLevel);
         const hasChildren = element.children && element.children.length > 0;
-        const cleanContent = element.content.trim();
-        const hasContent = cleanContent.length > 0;
+        const hasContent = element.content.trim().length > 0;
         
-        if (hasContent && !hasChildren) {
-          // Simple element with content only
-          return `${indent}<${element.tagName}>\n${indent}  ${cleanContent}\n${indent}</${element.tagName}>${hasParent ? '' : '\n'}`;
-        } else if (hasChildren && !hasContent) {
-          // Element with children only
-          const childrenXml = generateXML(element.children, indentLevel + 1, true);
-          return `${indent}<${element.tagName}>\n${childrenXml}\n${indent}</${element.tagName}>${hasParent ? '' : '\n'}`;
-        } else if (hasContent && hasChildren) {
-          // Element with both content and children
-          const childrenXml = generateXML(element.children, indentLevel + 1, true);
-          return `${indent}<${element.tagName}>\n${indent}  ${cleanContent}\n${childrenXml}\n${indent}</${element.tagName}>${hasParent ? '' : '\n'}`;
-        } else {
-          // Empty element
-          return `${indent}<${element.tagName}></${element.tagName}>`;
+        // Start with opening tag
+        let xml = `${indent}<${element.tagName}>`;
+        
+        // Add content with proper indentation if exists
+        if (hasContent) {
+          xml += `\n${indent}  ${element.content}\n${indent}`;
         }
+        
+        // Add children
+        if (hasChildren) {
+          const childrenXml = generateXML(element.children, indentLevel + 1);
+          if (hasContent) {
+            xml += childrenXml;
+          } else {
+            xml += `\n${childrenXml}\n${indent}`;
+          }
+        } else if (!hasContent) {
+          // Always ensure the closing tag is on a new line
+          xml += "\n" + indent;
+        }
+        
+        // Add closing tag
+        xml += `</${element.tagName}>`;
+        return xml;
       }).join('\n');
     };
 
-    const xml = generateXML(elements, 0, false);
+    const xml = generateXML(elements);
     setOutputXML(xml);
     setTokenCount(estimateTokenCount(xml));
-    // Persist elements
-    try {
-      if (elements.length > 0) {
-        localStorage.setItem(STORAGE_KEYS.elements, JSON.stringify(elements));
-        localStorage.removeItem(STORAGE_KEYS.rawInput);
-      } else {
-        localStorage.removeItem(STORAGE_KEYS.elements);
-      }
-    } catch {
-      // ignore storage errors
-    }
-  }, [elements]);
-
-  // Persist elements to localStorage whenever they change
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(elements));
-    } catch {
-      // ignore storage errors (quota, privacy mode, etc.)
-    }
   }, [elements]);
 
   // Persist elements to localStorage whenever they change
@@ -343,34 +254,6 @@ const PromptBuilder = forwardRef<PromptBuilderRef>((props, ref) => {
       }
     }
   }, [elements, selectedElement]);
-
-  // Handle Ctrl+S for export
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault();
-        exportToFile();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [elements, rawInput]);
-
-  // Persist raw input when builder is empty
-  useEffect(() => {
-    if (elements.length === 0) {
-      try {
-        if (rawInput && rawInput.length > 0) {
-          localStorage.setItem(STORAGE_KEYS.rawInput, rawInput);
-        } else {
-          localStorage.removeItem(STORAGE_KEYS.rawInput);
-        }
-      } catch {
-        // ignore storage errors
-      }
-    }
-  }, [rawInput, elements.length]);
 
   const addNewElement = () => {
     const newElement: XMLElement = {
@@ -628,20 +511,6 @@ const PromptBuilder = forwardRef<PromptBuilderRef>((props, ref) => {
     toast.success("XML copied to clipboard!");
   };
 
-  const exportToFile = () => {
-    const text = elements.length === 0 ? rawInput : outputXML;
-    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'prompt.txt';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast.success('Exported to prompt.txt');
-  };
-
   const clearAll = () => {
     setElements([]);
     setSelectedElement(null);
@@ -651,49 +520,15 @@ const PromptBuilder = forwardRef<PromptBuilderRef>((props, ref) => {
     } catch {
       // ignore
     }
-    try {
-      localStorage.removeItem(STORAGE_KEYS.elements);
-      localStorage.removeItem(STORAGE_KEYS.rawInput);
-    } catch {
-      // ignore storage errors
-    }
   };
-
-  const initializeWithTemplate = async () => {
-    const template = await loadTemplate();
-    if (template) {
-      try {
-        const parsed = looseParseXML(template);
-        setElements(parsed);
-      } catch (err: any) {
-        setRawInput(template);
-      }
-    }
-  };
-
-  const hasContent = () => {
-    return elements.length > 0 || rawInput.length > 0;
-  };
-
-  const getCurrentXML = () => {
-    const previewEl = document.getElementById('xml-preview');
-    return previewEl ? previewEl.textContent || '' : '';
-  };
-
-  useImperativeHandle(ref, () => ({
-    clearAll,
-    hasContent,
-    getCurrentXML,
-    importFromText
-  }));
 
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
       <Card className="p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.5)] border-2 border-black dark:border-gray-100 rounded-none bg-[#F2FCE2] dark:bg-gray-800">
-        <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold mb-4 flex flex-col md:flex-row md:justify-between md:items-center gap-2 border-b-2 border-black dark:border-gray-100 pb-2`}>
+        <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold mb-4 flex justify-between items-center border-b-2 border-black dark:border-gray-100 pb-2`}>
           <span className="font-black">Structure Builder</span>
-          <div className={cn("flex items-center", isMobile ? "gap-1" : "gap-2 mb-2")}>
+          <div className={cn("flex items-center", isMobile ? "gap-1" : "gap-2")}>
             <input
               ref={fileInputRef}
               type="file"
@@ -768,20 +603,12 @@ const PromptBuilder = forwardRef<PromptBuilderRef>((props, ref) => {
       </Card>
       
       <Card className="p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.5)] border-2 border-black dark:border-gray-100 rounded-none bg-[#F2FCE2] dark:bg-gray-800">
-        <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold mb-4 flex flex-col md:flex-row md:justify-between md:items-center gap-2 border-b-2 border-black dark:border-gray-100 pb-2`}>
+        <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold mb-4 flex justify-between items-center border-b-2 border-black dark:border-gray-100 pb-2`}>
           <span className="font-black">XML Preview</span>
-          <div className={cn("flex items-center", isMobile ? "gap-1" : "gap-3 mb-2")}>
+          <div className={cn("flex items-center", isMobile ? "gap-1" : "gap-3")}>
             <span className={`${isMobile ? 'text-xs' : 'text-sm'} font-mono font-bold text-gray-600 dark:text-gray-400 pr-1`}>
               ~{formatTokenCount(tokenCount)}
             </span>
-            <Button 
-              onClick={exportToFile}
-              size="sm"
-              disabled={(elements.length === 0 ? (rawInput.trim().length === 0) : (outputXML.trim().length === 0))}
-              className="flex items-center gap-1 bg-[#9AE66E] hover:bg-[#76B947] text-black font-bold border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
-            >
-              <Download className="h-4 w-4 stroke-[3]" /> Export
-            </Button>
             <ResponsiveButton 
               onClick={copyToClipboard} 
               size="sm" 
@@ -816,8 +643,6 @@ const PromptBuilder = forwardRef<PromptBuilderRef>((props, ref) => {
       </Card>
     </div>
   );
-});
-
-PromptBuilder.displayName = 'PromptBuilder';
+};
 
 export default PromptBuilder;
