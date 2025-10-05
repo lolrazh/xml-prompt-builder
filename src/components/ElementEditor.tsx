@@ -39,8 +39,8 @@ const ElementEditor: React.FC<ElementEditorProps> = ({ element, onUpdate }) => {
   };
 
   return (
-    <div className="space-y-4 font-mono">
-      <div>
+    <div className="flex flex-col h-full font-mono space-y-4">
+      <div className="flex-shrink-0">
         <Label htmlFor="tagName" className={`font-black text-black dark:text-white ${isMobile ? 'text-xs' : 'text-sm'}`}>Tag Name</Label>
         <Input
           id="tagName"
@@ -51,14 +51,14 @@ const ElementEditor: React.FC<ElementEditorProps> = ({ element, onUpdate }) => {
         />
       </div>
       
-      <div>
+      <div className="flex flex-col flex-1 min-h-0">
         <Label htmlFor="content" className={`font-black text-black dark:text-white ${isMobile ? 'text-xs' : 'text-sm'}`}>Content</Label>
         <Textarea
           id="content"
           value={content}
           onChange={handleContentChange}
           placeholder="Enter content (optional)"
-          className={`mt-1 ${isMobile ? 'min-h-[80px]' : 'min-h-[100px]'} border-2 border-black dark:border-gray-400 rounded-none focus:ring-[#9AE66E] focus:border-[#9AE66E] font-mono ${isMobile ? 'text-xs' : 'text-sm'}`}
+          className={`mt-1 flex-1 min-h-0 border-2 border-black dark:border-gray-400 rounded-none focus:ring-[#9AE66E] focus:border-[#9AE66E] font-mono ${isMobile ? 'text-xs' : 'text-sm'}`}
         />
       </div>
     </div>
