@@ -723,8 +723,8 @@ const PromptBuilder: React.FC = () => {
         </div>
       </Card>
       
-      <Card className="p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.5)] border-2 border-black dark:border-gray-100 rounded-none bg-[#F2FCE2] dark:bg-gray-800">
-        <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold mb-4 flex justify-between items-center border-b-2 border-black dark:border-gray-100 pb-2`}>
+      <Card className="p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.5)] border-2 border-black dark:border-gray-100 rounded-none bg-[#F2FCE2] dark:bg-gray-800 flex flex-col">
+        <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold mb-4 flex justify-between items-center border-b-2 border-black dark:border-gray-100 pb-2 flex-shrink-0`}>
           <span className="font-black">XML Preview</span>
           <div className={cn("flex items-center", isMobile ? "gap-1" : "gap-3")}> 
             <span className={`${isMobile ? 'text-xs' : 'text-sm'} font-mono font-bold text-gray-600 dark:text-gray-400 pr-1`}>
@@ -752,7 +752,7 @@ const PromptBuilder: React.FC = () => {
           suppressContentEditableWarning
           data-placeholder={ENABLE_IMPORT_PASTE ? 'Paste XML here.' : undefined}
           className={cn(
-            `relative w-full min-h-[400px] max-h-[70vh] overflow-y-auto whitespace-pre-wrap font-mono ${isMobile ? 'text-xs' : 'text-sm'} bg-white dark:bg-gray-800 border-2 border-black dark:border-gray-100 rounded-none p-4`,
+            `relative w-full flex-1 overflow-y-auto whitespace-pre-wrap font-mono ${isMobile ? 'text-xs' : 'text-sm'} bg-white dark:bg-gray-800 border-2 border-black dark:border-gray-100 rounded-none p-4`,
             elements.length === 0 ? "cursor-text" : "select-text",
             elements.length === 0 && ENABLE_IMPORT_FILE && isDragActive && "border-dashed bg-[#F2FCE2]"
           )}
