@@ -58,7 +58,7 @@ const ElementEditor: React.FC<ElementEditorProps> = ({ element, onUpdate }) => {
           value={content}
           onChange={handleContentChange}
           placeholder="Enter content (optional)"
-          className={`mt-1 flex-1 min-h-0 border-2 border-black dark:border-gray-400 rounded-none focus:ring-[#9AE66E] focus:border-[#9AE66E] font-mono ${isMobile ? 'text-xs' : 'text-sm'}`}
+          className={`mt-1 flex-1 min-h-0 resize-none border-2 border-black dark:border-gray-400 rounded-none focus:ring-[#9AE66E] focus:border-[#9AE66E] font-mono ${isMobile ? 'text-xs' : 'text-sm'}`}
         />
       </div>
     </div>
