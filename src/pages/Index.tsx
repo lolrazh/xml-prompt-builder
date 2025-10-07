@@ -19,6 +19,18 @@ const Index = () => {
           </h1>
           <div className="flex items-center gap-2">
             <a 
+              href="https://www.producthunt.com/products/xml-prompt-builder?embed=true&utm_source=badge-featured&utm_medium=badge&utm_source=badge-xml&#0045;prompt&#0045;builder" 
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden sm:block"
+            >
+              <img 
+                src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1019246&theme=light&t=1759821130718" 
+                alt="XML Prompt Builder - Build XML Style Prompts Visually | Product Hunt" 
+                className="h-9"
+              />
+            </a>
+            <a 
               href="https://github.com/lolrazh/xml-prompt-builder"
               target="_blank"
               rel="noopener noreferrer"
