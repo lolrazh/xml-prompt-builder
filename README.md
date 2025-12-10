@@ -9,7 +9,7 @@
 </div>
 
 <div align="center">
-  <img src="public/page.png" alt="XML Prompt Builder Logo" width="1000"/>
+  <img src="public/og.png" alt="XML Prompt Builder Logo" width="1000"/>
 </div>
 
 ## 🚀 Overview
