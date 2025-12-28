@@ -62,8 +62,12 @@
 
 <body>
   <div id="root">
-    <!-- SEO-friendly content for crawlers (will be replaced by React) -->
-    <div style="max-width: 1200px; margin: 0 auto; padding: 2rem;">
+    <!-- SEO-friendly content for crawlers (hidden from users, visible to bots parsing HTML) -->
+    <div id="seo-content" style="display: none; max-width: 1200px; margin: 0 auto; padding: 2rem;">
+      <header style="margin-bottom: 2rem; text-align: center;">
+        <h1 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 0.5rem;">XML Prompt Builder</h1>
+        <p style="font-size: 1.25rem; color: #666;">Visual Structured Prompt Editor for Claude, GPT & LLMs</p>
+      </header>
       <section style="margin-bottom: 2rem;">
         <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem;">Build XML Prompts Visually</h2>
         <p style="line-height: 1.6; margin-bottom: 1rem;">Create structured XML prompts for AI systems without the
